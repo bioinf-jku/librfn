@@ -1,0 +1,9 @@
+RFN/*
+*.o
+*.so
+*.npy
+*.pyc
+*.log
+*.pkl
+*.mp4
+.ipynb_checkpoints
