@@ -177,7 +177,7 @@ def train_rfn(X, n_hidden, n_iter, etaW, etaP, minP, dropout_rate,
     else:
         P = np.array([startP] * X.shape[1], dtype=np.float32)
 
-    X = X.astype(np.float32)
+    X = X.astype(np.float32, order="C")
     Wout = np.empty((W.shape[0], W.shape[1]), np.float32)
     if gpu_id == "cpu":
         _librfn.train_cpu(X, W, P, X.shape[0], X.shape[1], n_hidden, n_iter,
