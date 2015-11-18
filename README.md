@@ -35,7 +35,7 @@ The following code trains a RFN on MNIST and plots the resulting filters::
     X = mnist['data'] / 255.0
 
     from rfn import *
-    W, P = train_rfn(X, 128, 500, 0.1, 0.1, 1e-1, 0.0, gpu_id=0)
+    W, P, Wout = train_rfn(X, 128, 500, 0.1, 0.1, 1e-1, 0.0, gpu_id=0)
 
     # plot weights
     fig, ax = plt.subplots(5, 5, figsize=(8, 8))
