@@ -66,7 +66,7 @@ testbin: librfn.so tests/testbin.o
 	gcc tests/testbin.o -o testbin $(LIBPATH) $(LDFLAGS) -L./ -lrfn
 
 librfn.so: $(OBJECTS)
-	$(CC) $(LDFLAGS) $^ -o $@ $(LIBS) -shared
+	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS) -shared
 
 gpu_operations.o: gpu_operations.cu
 	$(NVCC) $(NVCCFLAGS) -o $@ -c $<
