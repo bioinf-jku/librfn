@@ -8,9 +8,9 @@ DEBUG = no
 
 # BLAS/LAPACK implementation
 # Change these lines if you don't have an MKL but an other BLAS/LAPACK
-#LIBS=-llapack -lblas
-INCPATH=-I/opt/intel/mkl/include/
-LIBS=-L/opt/intel/mkl/lib/intel64/ -lmkl_rt
+LIBS=-llapack -lblas
+#INCPATH=-I/opt/intel/mkl/include/
+#LIBS=-L/opt/intel/mkl/lib/intel64/ -lmkl_rt
 
 
 GPUINC=-I/usr/local/cuda/include
