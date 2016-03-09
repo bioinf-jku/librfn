@@ -25,7 +25,7 @@ Note that librfn makes heavy use of BLAS and LAPACK, so make sure to link it to 
 
 # Usage
 
-The following code trains a RFN on MNIST and plots the resulting filters::
+The following code trains an RFN on MNIST and plots the resulting filters::
 
     import numpy as np
     import matplotlib.pyplot as plt
