@@ -15,7 +15,7 @@ LIBS=-llapack -lblas
 
 GPUINC=-I/usr/local/cuda/include
 GPULIB=-L/usr/local/cuda/lib64
-GPUSO=-lcublas -lcurand -lcuda -lcudart -lcusolver
+GPUSO=-lcublas -lcurand -lcuda -lcudart -lcusolver -lgomp
 
 
 ifeq ($(DEBUG), no)
