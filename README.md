@@ -15,8 +15,7 @@ librfn is implemented in C++ and can be easily integrated in existing code bases
 
 
 # Requirements
-
-To run the GPU code, you require a CUDA 7.5 compatible GPU. While in theory CUDA 7.0 is also supported, it contains a bug that results in a memory leak when running librfn (and your program is likely to crash with an out-of-memory error).
+To run the GPU code, you require a CUDA 7.5 (or higher) compatible GPU. While in theory CUDA 7.0 is also supported, it contains a bug that results in a memory leak when running librfn (and your program is likely to crash with an out-of-memory error).
 
 If you do not have access to a GPU, you can disable GPU support by setting `USEGPU = no` in the Makefile.
 
@@ -70,4 +69,4 @@ In contrast, librfn always uses the simplest/fastest projection method. This is 
 
 
 # License
-librfn is licensed under the [General Public License (GPL) Version 2 or higher](http://www.gnu.org/licenses/gpl-2.0.html) See ``License.txt`` for details.
+librfn was developed by Thomas Unterthiner and is licensed under the [General Public License (GPL) Version 2 or higher](http://www.gnu.org/licenses/gpl-2.0.html) See ``License.txt`` for details.
