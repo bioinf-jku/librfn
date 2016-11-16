@@ -199,3 +199,52 @@ def train_rfn(X, n_hidden, n_iter, etaW, etaP, minP, dropout_rate,
                                 gpu_id)
 
     return W, P, Wout
+
+
+from sklearn.base import BaseEstimator, TransformerMixin
+class RectifiedFactorNetwork(BaseEstimator, TransformerMixin):
+    '''Implements a sklearn interface for RFN.'''
+    def __init__(self, n_hidden=128, n_iter=50, etaW=0.1, etaP=0.1, minP=1e-2, dropout_rate=0.0,
+              input_noise_rate=0.0, startP=0.1, startW=None,
+              l2_weightdecay=0.0, l1_weightdecay=0.0,
+              input_noise_type="saltpepper", activation="relu",
+              h_threshold=0.0, momentum=0.0, applyNewtonUpdate=True,
+              batch_size=-1, seed=None, gpu_id="default"):
+        self.n_hidden = n_hidden
+        self.n_iter = n_iter
+        self.etaW = etaW
+        self.etaP = etaP
+        self.minP = minP
+        self.dropout_rate = dropout_rate
+        self.input_noise_rate = input_noise_rate
+        self.startP = startP
+        self.startW = startW
+        self.l2_weightdecay = l2_weightdecay
+        self.l1_weightdecay = l1_weightdecay
+        self.input_noise_type = input_noise_type
+        self.activation = activation
+        self.h_threshold = h_threshold
+        self.momentum = momentum
+        self.applyNewtonUpdate = applyNewtonUpdate
+        self.batch_size = batch_size
+        self.seed = seed
+        self.gpu_id = gpu_id
+
+    def fit(self, x, y=None):
+        res = train_rfn(x, self.n_hidden, self.n_iter, self.etaW, self.etaP, self.minP, self.dropout_rate,
+              self.input_noise_rate, self.startP, self.startW,
+              self.l2_weightdecay, self.l1_weightdecay,
+              self.input_noise_type, self.activation,
+              self.h_threshold, self.momentum, self.applyNewtonUpdate,
+              self.batch_size, self.seed, self.gpu_id)
+        self.w, self.psi, self.wout = res
+        return self
+
+    def transform(self, x):
+        h = np.maximum(np.dot(x, self.wout.T), 0)
+        h /= (h.std(1) + 1e-9)[:, None]  ## TODO: should I really scale the h?
+        return h
+
+    def inverse_transform(self, h):
+        r = np.dot(h, self.w)
+        return r
