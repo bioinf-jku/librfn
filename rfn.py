@@ -164,7 +164,8 @@ def train_rfn(X, n_hidden, n_iter, etaW, etaP, minP, dropout_rate,
     '''
 
     if seed is None:
-        seed = np.uint32(time.time()*100)
+        # should be different for each call on each process
+        seed = np.uint32(hash(os.getpid() + time.time()) % 4294967295)
     if gpu_id == "default":
         gpu_id = _default_gpu_id
     rng = np.random.RandomState(seed)
