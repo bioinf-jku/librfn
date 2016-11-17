@@ -121,7 +121,7 @@ def train_rfn(X, n_hidden, n_iter, etaW, etaP, minP, dropout_rate,
     l2_weightdecay : float
         L1 penalty for weight decay
 
-    input_noise_type : one of 'dropout', 'saltpapper' or 'gaussian'
+    input_noise_type : one of 'dropout', 'saltpepper' or 'gaussian'
         Type of input noise
 
     activation : one of ('linear', 'relu', 'leaky', 'sigmoid', 'tanh')
