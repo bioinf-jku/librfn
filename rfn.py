@@ -243,7 +243,9 @@ class RectifiedFactorNetwork(BaseEstimator, TransformerMixin):
 
     def transform(self, x):
         h = np.maximum(np.dot(x, self.wout.T), 0)
-        h /= (h.std(1) + 1e-9)[:, None]  ## TODO: should I really scale the h?
+        s = h.std(1)
+        s[s < 1e-6] = 1
+        h /= s[:, None]  ## TODO: should I really scale the h?
         return h
 
     def inverse_transform(self, h):
