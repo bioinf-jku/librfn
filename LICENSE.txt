@@ -1,5 +1,6 @@
     librfn: An implementation of Rectified Factor Networks
-    Copyright (C) 2014-2015  Thomas Unterthiner
+    Copyright (C) 2014-2017  Thomas Unterthiner
+    Additional contributions by Thomas Adler, Balázs Bencze
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

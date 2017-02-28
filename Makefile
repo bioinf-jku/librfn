@@ -15,7 +15,7 @@ LIBS=-llapack -lblas
 
 GPUINC=-I/usr/local/cuda/include
 GPULIB=-L/usr/local/cuda/lib64
-GPUSO=-lcublas -lcurand -lcuda -lcudart -lcusolver -lgomp
+GPUSO=-lcublas -lcurand -lcuda -lcudart -lcusolver -lgomp -lcusparse
 
 
 ifeq ($(DEBUG), no)
@@ -46,8 +46,8 @@ NVCCFLAGS=--use_fast_math $(addprefix -Xcompiler , $(CXXFLAGS)) \
            -gencode arch=compute_61,code=sm_61
 
 
-SOURCES=librfn.cpp cpu_operations.cpp
-OBJECTS=librfn.o cpu_operations.o
+SOURCES=librfn.cpp cpu_operations.cpp nist_spblas.cc
+OBJECTS=librfn.o cpu_operations.o nist_spblas.o
 
 ifeq ($(USEGPU),yes)
 	SOURCES+=gpu_operations.cu

@@ -2,7 +2,9 @@
 '''
 Python wrapper for librfn.
 
-Copyright © 2015 Thomas Unterthiner
+Copyright © 2015-2017 Thomas Unterthiner
+Additional Contributions by Thomas Adler, Balázs Bencze
+
 Licensed under GPL, version 2 or a later (see LICENSE.txt)
 '''
 
@@ -12,6 +14,7 @@ import ctypes as ct
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
+from scipy import sparse
 
 
 import sys
@@ -22,52 +25,56 @@ if sys.version_info < (3,):
 _curdir = os.path.dirname(os.path.realpath(__file__))
 _librfn = ct.cdll.LoadLibrary(os.path.join(_curdir, 'librfn.so'))
 _default_gpu_id = -1
+_use_cpu_id = -2
 
-
-_librfn.calculate_W_cpu.argtypes = [
+_librfn.calculate_W.argtypes = [
     np.ctypeslib.ndpointer(np.float32),
     np.ctypeslib.ndpointer(np.float32),
     np.ctypeslib.ndpointer(np.float32),
     np.ctypeslib.ndpointer(np.float32),
     ct.c_int, ct.c_int, ct.c_int,
-    ct.c_int, ct.c_int, ct.c_float]
+    ct.c_int, ct.c_int, ct.c_float,
+    ct.c_int]
 
 
-_librfn.train_cpu.restype = ct.c_int
-_librfn.train_cpu.argtypes = [
+_librfn.train_rfn.restype = ct.c_int
+_librfn.train_rfn.argtypes = [
     np.ctypeslib.ndpointer(np.float32),
     np.ctypeslib.ndpointer(np.float32),
     np.ctypeslib.ndpointer(np.float32),
     ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int,
     ct.c_float, ct.c_float, ct.c_float, ct.c_float,
     ct.c_float, ct.c_float, ct.c_float, ct.c_float, ct.c_float,
-    ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int
+    ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int,
+    ct.c_int
 ]
 
-try:
-    _librfn.calculate_W_gpu.argtypes = [
-        np.ctypeslib.ndpointer(np.float32),
-        np.ctypeslib.ndpointer(np.float32),
-        np.ctypeslib.ndpointer(np.float32),
-        np.ctypeslib.ndpointer(np.float32),
-        ct.c_int, ct.c_int, ct.c_int,
-        ct.c_int, ct.c_int, ct.c_float,
-        ct.c_int]
+
+_librfn.calculate_W_sparse.argtypes = [
+    np.ctypeslib.ndpointer(np.float32),
+    np.ctypeslib.ndpointer(np.int32),
+    np.ctypeslib.ndpointer(np.int32),
+    np.ctypeslib.ndpointer(np.float32),
+    np.ctypeslib.ndpointer(np.float32),
+    np.ctypeslib.ndpointer(np.float32),
+    ct.c_int, ct.c_int, ct.c_int,
+    ct.c_int, ct.c_int, ct.c_float,
+    ct.c_int]
 
 
-    _librfn.train_gpu.restype = ct.c_int
-    _librfn.train_gpu.argtypes = [
-        np.ctypeslib.ndpointer(np.float32),
-        np.ctypeslib.ndpointer(np.float32),
-        np.ctypeslib.ndpointer(np.float32),
-        ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int,
-        ct.c_float, ct.c_float, ct.c_float, ct.c_float,
-        ct.c_float, ct.c_float, ct.c_float, ct.c_float, ct.c_float,
-        ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int,
-        ct.c_int
-    ]
-except AttributeError as err:
-    warnings.warn("GPU mode is not available")
+_librfn.train_rfn_sparse.restype = ct.c_int
+_librfn.train_rfn_sparse.argtypes = [
+    np.ctypeslib.ndpointer(np.float32),
+    np.ctypeslib.ndpointer(np.int32),
+    np.ctypeslib.ndpointer(np.int32),
+    np.ctypeslib.ndpointer(np.float32),
+    np.ctypeslib.ndpointer(np.float32),
+    ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int,
+    ct.c_float, ct.c_float, ct.c_float, ct.c_float,
+    ct.c_float, ct.c_float, ct.c_float, ct.c_float, ct.c_float,
+    ct.c_int, ct.c_int, ct.c_int, ct.c_int, ct.c_int,
+    ct.c_int
+]
 
 
 _input_noise_types = {"dropout": 1, "saltpepper": 2, "gaussian": 3}
@@ -168,6 +175,9 @@ def train_rfn(X, n_hidden, n_iter, etaW, etaP, minP, dropout_rate,
         seed = np.uint32(hash(os.getpid() + time.time()) % 4294967295)
     if gpu_id == "default":
         gpu_id = _default_gpu_id
+    elif gpu_id == "cpu":
+        gpu_id = _use_cpu_id
+
     rng = np.random.RandomState(seed)
     if startW is None:
         W = rng.normal(scale=0.01, size=(n_hidden, X.shape[1])).astype(np.float32)
@@ -178,23 +188,25 @@ def train_rfn(X, n_hidden, n_iter, etaW, etaP, minP, dropout_rate,
     else:
         P = np.array([startP] * X.shape[1], dtype=np.float32)
 
-    X = X.astype(np.float32, order="C")
     Wout = np.empty((W.shape[0], W.shape[1]), np.float32)
-    if gpu_id == "cpu":
-        _librfn.train_cpu(X, W, P, X.shape[0], X.shape[1], n_hidden, n_iter,
-                          batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                          l2_weightdecay, l1_weightdecay, momentum, _input_noise_types[input_noise_type],
-                          _activation_types[activation], 1, applyNewtonUpdate, seed)
 
-        _librfn.calculate_W_cpu(X, W, P, Wout,
-                                X.shape[0], X.shape[1], W.shape[0],
-                                _activation_types[activation], 1, h_threshold)
-    else:
-        _librfn.train_gpu(X, W, P, X.shape[0], X.shape[1], n_hidden, n_iter,
+    if sparse.issparse(X):
+        X = X.tocsr().astype(np.float32)
+        _librfn.train_rfn_sparse(X.data, X.indices, X.indptr, W, P, X.shape[0], X.shape[1], n_hidden, n_iter,
                           batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
                           l2_weightdecay, l1_weightdecay, momentum, _input_noise_types[input_noise_type],
                           _activation_types[activation], 1, applyNewtonUpdate, seed, gpu_id)
-        _librfn.calculate_W_gpu(X, W, P, Wout,
+        _librfn.calculate_W_sparse(X.data, X.indices, X.indptr, W, P, Wout,
+                                X.shape[0], X.shape[1], W.shape[0],
+                                _activation_types[activation], 1, h_threshold,
+                                gpu_id)
+    else:
+        X = X.astype(np.float32, order="C")
+        _librfn.train_rfn(X, W, P, X.shape[0], X.shape[1], n_hidden, n_iter,
+                          batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                          l2_weightdecay, l1_weightdecay, momentum, _input_noise_types[input_noise_type],
+                          _activation_types[activation], 1, applyNewtonUpdate, seed, gpu_id)
+        _librfn.calculate_W(X, W, P, Wout,
                                 X.shape[0], X.shape[1], W.shape[0],
                                 _activation_types[activation], 1, h_threshold,
                                 gpu_id)

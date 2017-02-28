@@ -1,15 +1,14 @@
 /*
-Copyright © 2015 Thomas Unterthiner
+Copyright © 2015-2017 Thomas Unterthiner
+Additional Contributions by Thomas Adler, Balázs Bencze
 Licensed under GPL, version 2 or a later (see LICENSE.txt)
 */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-#include <sys/time.h>
-
 #include "librfn.h"
+#include <stdlib.h>
+#include <sys/time.h>
 #include "cpu_operations.h"
+
 #ifndef NOGPU
 #include "gpu_operations.h"
 #endif
@@ -18,21 +17,6 @@ float time_diff(struct timeval *t2, struct timeval *t1) {
     long int diff = (t2->tv_usec + 1000000 * t2->tv_sec) - (t1->tv_usec + 1000000 * t1->tv_sec);
     return diff / 1000000.0f;
 }
-
-/*
-// used for debugging
-template<class OP>
-static void print_abs_sum(float* dx, size_t size) {
-    float *hx = (float*) std::malloc(size*sizeof(float));
-    op.copy_to_host(dx, hx, size*sizeof(float));
-    float sum = 0.0;
-    for (unsigned i = 0; i < size; ++i)
-        sum += fabsf(hx[i]);
-    free(hx);
-    printf("%5.2f ", sum);
-    fflush(stdout);
-}
-*/
 
 template <class OP>
 int calculate_W_impl_invertMxM(OP& op, const float* W, const float* P, float* Wout,
@@ -63,20 +47,20 @@ int calculate_W_impl_invertKxK(OP& op, const float* W, const float* Pinv, float*
 
 
 // if isMoreHiddensThanFeatures is true, we will calculate the m*m inverse, otherwise the k*k one
-template <class OP, bool isMoreHiddensThanFeatures>
-int train(const float* X_host, float* W_host, float* P_host, const int n, const int m,
+template <class OP, bool isMoreHiddensThanFeatures, typename XType, typename XTypeConst>
+int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const int m,
           const int k, const int n_iter, int batch_size, const float etaW, const float etaP,
           const float minP, const float h_threshold,
           const float dropout_rate, const float input_noise_rate,
           const float l2_weightdecay, const float l1_weightdecay, const float momentum,
           const int input_noise_type, const int activation_type, const int apply_scaling,
           const int applyNewtonUpdate, unsigned long seed, int gpu_id) {
-
-    if (batch_size == 1)
+    if (batch_size == 1) {
         printf ("batch_size == 1 not supported, switching to full batch mode");
+    }
 
     OP op(n, m, k, seed, gpu_id);
-    float* X = op.to_device(X_host, m*n*sizeof(float));
+    XType X = op.to_device(X_host, m*n*sizeof(float));
     float* W = op.to_device(W_host, k*m*sizeof(float));
     float* P = op.to_device(P_host, m*sizeof(float));
     if (batch_size < 2) // no mini-batches, one batch=full dataset
@@ -94,11 +78,11 @@ int train(const float* X_host, float* W_host, float* P_host, const int n, const 
     float* dW = op.malloc(m*k*sizeof(float));
     float* C = op.malloc(m*m*sizeof(float));
 
-
-
-    float* Xtmp = 0;
+    XType Xtmp = op.template init_invalid<XType>();
     if (input_noise_rate > 0.0f)
-        Xtmp = op.malloc(batch_size*m*sizeof(float));
+    {
+       Xtmp = op.template malloc_matrix<XType>(batch_size, m);
+    }
 
     // which matrices of the following we use depends on which inverse we use
     float* WWPchol = 0;
@@ -132,6 +116,7 @@ int train(const float* X_host, float* W_host, float* P_host, const int n, const 
         op.free(WPWchol);
         op.free(WPWinv);
         op.free(Wtmp);
+        op.free(Xtmp);
         op.free(XCov_diag);
         return -1;
     }
@@ -146,19 +131,20 @@ int train(const float* X_host, float* W_host, float* P_host, const int n, const 
             gettimeofday(&t1, 0);
             printf("epoch: %4d  (time: %6.2fs)\n", cur_iter, time_diff(&t1, &t0));
         }
-        for (int cur_batch = 0; cur_batch < n_batches; ++cur_batch){
-
+        for (int cur_batch = 0; cur_batch < n_batches; ++cur_batch) {
             if (isMoreHiddensThanFeatures) {
-            calculate_W_impl_invertMxM<OP>(op, W, P, Wout, k, m, WWPchol, WWPinv);
+                calculate_W_impl_invertMxM<OP>(op, W, P, Wout, k, m, WWPchol, WWPinv);
             } else {
-                op.invert(P, m);  // TODO: something better than inverting P twice
+                op.invert(P, m);  // TODO: something better than inverting P twice,
+                /* how about inverting P once into distinct mem? */
                 calculate_W_impl_invertKxK<OP>(op, W, P, Wout, k, m, Wtmp, WPWchol, WPWinv);
                 op.invert(P, m);
             }
 
-            float* Xnoise = &X[cur_batch*batch_size*m];
+            XType Xnoise;
+
             if (input_noise_type && input_noise_rate > 0.0f) {
-                op.memcpy(Xtmp, X + cur_batch*batch_size*m, batch_size*m*sizeof(float));
+                op.memcpy_matrix(Xtmp, X, batch_size, m, cur_batch);
                 switch(input_noise_type) {
                     case 1:  // dropout noise
                         op.dropout(Xtmp, batch_size*m, input_noise_rate);
@@ -174,8 +160,18 @@ int train(const float* X_host, float* W_host, float* P_host, const int n, const 
                         assert(false);
                 }
                 Xnoise = Xtmp;
+            } else {
+                /* in case of sparse X, this is a copy operation! */
+                Xnoise = op.get_batch(X, m, cur_batch, batch_size);
             }
+
             op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
+
+            if (!(input_noise_type && input_noise_rate > 0.0f))
+            {
+               /* free matrix only if it's sparse */
+               op.free_sparse(Xnoise);
+            }
 
             switch (activation_type) {
                 case 1: op.maximum(H, h_threshold, batch_size*k); break;
@@ -183,7 +179,7 @@ int train(const float* X_host, float* W_host, float* P_host, const int n, const 
                 case 3: op.sigmoid(H, batch_size*k); break;
                 case 4: op.tanh(H, batch_size*k); break;
                 default:
-                    printf("invalid noise type");
+                    printf("invalid activation type");
                     assert(false);
             }
 
@@ -202,9 +198,10 @@ int train(const float* X_host, float* W_host, float* P_host, const int n, const 
             } else {
                 op.axpy(k*k, 1.0f, WPWinv, 1, S, 1);
             }
+            XType XBatch = op.get_batch(X, m, cur_batch, batch_size);
 
+            op.gemm("n", "t", m, k, batch_size, 1.0f/batch_size, XBatch, m, H, k, 0.0f, U, m);
 
-            op.gemm("n", "t", m, k, batch_size, 1.0f/batch_size, X + cur_batch*batch_size*m, m, H, k, 0.0f, U, m);
             if (applyNewtonUpdate) {
                 op.axpy(k, 1e-10, op.ones, 0, S, k+1);
                 op.memcpy(Schol, S, k*k*sizeof(float));
@@ -224,10 +221,14 @@ int train(const float* X_host, float* W_host, float* P_host, const int n, const 
             op.gemm("n", "n", m, k, k, 1.0f, W, m, S, k, -2.0f, U, m);
             op.gemm("n", "t", m, m, k, 1.0f, U, m, W, m, 0.0f, C, m);
 
-            if (batch_size < n)
-                op.calculate_column_variance(X + cur_batch*batch_size*m, batch_size, m, dP);
-            else
+            if (batch_size < n) {
+                op.calculate_column_variance(XBatch, batch_size, m, dP);
+            } else {
                 op.memcpy(dP, XCov_diag, m*sizeof(float));
+            }
+
+            op.free_sparse(XBatch);
+
             op.axpy(m, 1.0f, C, m+1, dP, 1);
             op.axpy(m, -1.0f, P, 1, dP, 1);
 
@@ -259,14 +260,15 @@ int train(const float* X_host, float* W_host, float* P_host, const int n, const 
     op.free(Xtmp);
     op.free(XCov_diag);
     op.free_devicememory(X);
+
     op.to_host(W, W_host, m*k*sizeof(float));
     op.to_host(P, P_host, m*sizeof(float));
     return 0;
 }
 
 
-template <class OP>
-void calculate_W(const float* X_host, const float* W_host, const float* P_host,
+template <class OP, typename XType, typename XTypeConst>
+void calculate_W(XTypeConst X_host, const float* W_host, const float* P_host,
                  float* Wout_host, const int n, const int m, const int k,
                  const int activation_type, const int apply_scaling,
                  const float h_threshold, int gpu_id) {
@@ -276,7 +278,7 @@ void calculate_W(const float* X_host, const float* W_host, const float* P_host,
     float* Wout = op.to_device(Wout_host, k*m*sizeof(float));
     float* W = op.to_device(W_host, k*m*sizeof(float));
     float* P = op.to_device(P_copy, m*sizeof(float));
-    float* X = op.to_device(X_host, n*m*sizeof(float));
+    XType  X = op.to_device(X_host, n*m*sizeof(float));
     float* H = op.malloc(n*k*sizeof(float));
     float* variance_H = op.malloc(k*sizeof(float));
 
@@ -328,27 +330,7 @@ void calculate_W(const float* X_host, const float* W_host, const float* P_host,
 
 extern "C" {
 
-int train_cpu(const float* X, float* W, float* P, const int n, const int m,
-              const int k, const int n_iter, int batch_size, const float etaW,
-              const float etaP, const float minP, const float h_threshold,
-              const float dropout_rate, const float input_noise_rate,
-              const float l2_weightdecay, const float l1_weightdecay,
-              const float momentum,
-              const int input_noise_type, const int activation_type, const int apply_scaling,
-              const int applyNewtonUpdate, unsigned long seed) {
-    if (k > m) {
-        return train<CPU_Operations, true>(X, W, P, n, m, k,
-                    n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                    l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
-    } else {
-        return train<CPU_Operations, false>(X, W, P, n, m, k,
-                    n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                    l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
-    }
-}
-
-#ifndef NOGPU
-int train_gpu(const float* X_host, float* W_host, float* P_host, const int n,
+int train_rfn(const float* X, float* W, float* P, const int n,
               const int m, const int k, const int n_iter, int batch_size,
               const float etaW, const float etaP, const float minP, const float h_threshold,
               const float dropout_rate, const float input_noise_rate,
@@ -356,29 +338,108 @@ int train_gpu(const float* X_host, float* W_host, float* P_host, const int n,
               const float momentum,
               const int input_noise_type, const int activation_type, const int apply_scaling,
               const int applyNewtonUpdate, unsigned long seed, const int gpu_id) {
-    if (k > m) {
-        return train<GPU_Operations, true>(X_host, W_host, P_host, n, m, k,
-                    n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                    l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+
+    if (gpu_id == USE_CPU) {
+        if (k > m) {
+            return train<CPU_Operations, true, float *, const float *>(X, W, P, n, m, k,
+                        n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
+        } else {
+            return train<CPU_Operations, false, float *, const float *>(X, W, P, n, m, k,
+                        n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
+        }
     } else {
-        return train<GPU_Operations, false>(X_host, W_host, P_host, n, m, k,
-                    n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                    l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+#ifndef NOGPU
+        if (k > m) {
+            return train<GPU_Operations, true, float *, const float *>(X, W, P, n, m, k,
+                        n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+        } else {
+            return train<GPU_Operations, false, float *, const float *>(X, W, P, n, m, k,
+                        n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+        }
+#else
+        fprintf(stderr, "librfn was compiled without GPU support");
+#endif
     }
 }
-#endif
 
-void calculate_W_cpu(const float* X, const float* W, const float* P, float* Wout,
-                     const int n, const int m, const int k,
-                     const int activation_type, const int apply_scaling, const float h_threshold) {
-    return calculate_W<CPU_Operations>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, -1);
+
+int train_rfn_sparse(const float* Xvals, const int* Xcols, const int *Xrowptr,
+              float* W, float* P, const int n, const int m,
+              const int k, const int n_iter, int batch_size, const float etaW,
+              const float etaP, const float minP, const float h_threshold,
+              const float dropout_rate, const float input_noise_rate,
+              const float l2_weightdecay, const float l1_weightdecay,
+              const float momentum,
+              const int input_noise_type, const int activation_type, const int apply_scaling,
+              const int applyNewtonUpdate, unsigned long seed, const int gpu_id) {
+    if (gpu_id == USE_CPU) {
+        const CPU_Operations::SparseMatrix X = CPU_Operations::create_sparse_matrix(Xvals, Xcols, Xrowptr, n, m);
+        int retval = 0;
+        if (k > m) {
+            retval =  train<CPU_Operations, true, CPU_Operations::SparseMatrix, const CPU_Operations::SparseMatrix>((CPU_Operations::SparseMatrix) X, W, P, n, m, k,
+                        n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
+        } else {
+            retval = train<CPU_Operations, false, CPU_Operations::SparseMatrix, const CPU_Operations::SparseMatrix>((CPU_Operations::SparseMatrix) X, W, P, n, m, k,
+                        n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
+        }
+        //destroy(X);
+        return retval;
+    } else {
+#ifndef NOGPU
+        const GPU_Operations::SparseMatrix X = GPU_Operations::create_sparse_matrix(Xvals, Xcols, Xrowptr, n, m);
+        if (k > m) {
+            return train<GPU_Operations, true, GPU_Operations::SparseMatrix*, const GPU_Operations::SparseMatrix*>(&X, W, P, n, m, k,
+                        n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+        } else {
+            return train<GPU_Operations, false, GPU_Operations::SparseMatrix*, const GPU_Operations::SparseMatrix*>(&X, W, P, n, m, k,
+                        n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+        }
+#else
+        fprintf(stderr, "librfn was compiled without GPU support");
+#endif
+    }
 }
 
+
+void calculate_W(const float* X, const float* W, const float* P, float* Wout,
+                 const int n, const int m, const int k, const int activation_type,
+                 const int  apply_scaling, const float h_threshold, int gpu_id) {
+    if (gpu_id == USE_CPU) {
+        return calculate_W<GPU_Operations, float *, const float *>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, gpu_id);
+    } else {
 #ifndef NOGPU
-void calculate_W_gpu(const float* X, const float* W, const float* P, float* Wout,
+        return calculate_W<CPU_Operations, float *, const float *>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, -1);
+#else
+        fprintf(stderr, "librfn was compiled without GPU support");
+#endif
+    }
+}
+
+
+void calculate_W_sparse(const float* Xvals, const int* Xcols, const int *Xrowptr,
+                     const float* W, const float* P, float* Wout,
                      const int n, const int m, const int k, const int activation_type,
                      const int  apply_scaling, const float h_threshold, int gpu_id) {
-    return calculate_W<GPU_Operations>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, gpu_id);
-}
+    if (gpu_id == USE_CPU) {
+        const CPU_Operations::SparseMatrix X = CPU_Operations::create_sparse_matrix(Xvals, Xcols, Xrowptr, n, m);
+        calculate_W<CPU_Operations, CPU_Operations::SparseMatrix, const CPU_Operations::SparseMatrix>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, -1);
+        //destroy(X);
+     } else {
+#ifndef NOGPU
+        const GPU_Operations::SparseMatrix X = GPU_Operations::create_sparse_matrix(Xvals, Xcols, Xrowptr, n, m);
+        calculate_W<GPU_Operations, GPU_Operations::SparseMatrix*, const GPU_Operations::SparseMatrix *>(&X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, gpu_id);
+#else
+        fprintf(stderr, "librfn was compiled without GPU support");
 #endif
+    }
+}
+
 }
