@@ -10,13 +10,39 @@ Licensed under GPL, version 2 or a later (see LICENSE.txt)
 #include <curand.h>
 #include <curand_kernel.h>
 #include <cusolverDn.h>
-#include <cstdio>
 #include <cstring>
 #include <ctype.h>
-#include <cassert>
 #include <map>
 #include <cusparse_v2.h>
 #include <typeinfo> /* for typeid */
+
+#ifndef COMPILE_FOR_R
+#include <cstdio.h>
+#include <assert.h>
+#else
+#include "use_R_impl.h"
+#endif
+
+
+
+// This code to print a stack trace will only work on Linux
+#ifndef NDEBUG
+#include <execinfo.h>
+static void print_stacktrace() {
+    const int MAX_SIZE = 15;
+    void *array[MAX_SIZE];
+    int size = backtrace(array, MAX_SIZE);
+    char **strings = 0;
+    strings = backtrace_symbols (array, size);
+    printf("Obtained %d stack frames:\n", size);
+    for (int i = 0; i < size; ++i)
+        printf ("%s\n", strings[i]);
+    free (strings);
+}
+#else
+static void print_stacktrace() {
+}
+#endif
 
 
 using std::fprintf;
@@ -68,6 +94,7 @@ static const char* cublasErrorString(cublasStatus_t error) {
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
     if (code != cudaSuccess) {
         fprintf(stderr, "CUDA Error: %s %s:%d\n", cudaGetErrorString(code), file, line);
+        print_stacktrace();
         if (abort)
             exit(code);
     }
@@ -78,6 +105,7 @@ inline void cublasAssert(cublasStatus_t code, const char *file, int line) {
 //printf("%d (%s:%d)\n", code, file, line);
     if (code != CUBLAS_STATUS_SUCCESS) {
         fprintf(stderr, "CUBLAS Error: %s %s:%d\n", cublasErrorString(code), file, line);
+        print_stacktrace();
         exit(code);
     }
 }
@@ -87,6 +115,7 @@ inline void cusparseAssert(cusparseStatus_t code, const char *file, int line) {
     // printf("%d (%s:%d)\n", code, file, line);
     if (code != CUSPARSE_STATUS_SUCCESS) {
         fprintf(stderr, "CUSPARSE Error: %s %s:%d\n", cusparseErrorString(code), file, line);
+        print_stacktrace();
         exit(code);
     }
 }
@@ -110,6 +139,7 @@ inline void cusolverAssert(cusolverStatus_t code, const char *file, int line) {
     //printf("%d (%s:%d)\n", code, file, line);
     if (code != CUSOLVER_STATUS_SUCCESS) {
         fprintf(stderr, "CUBLAS Error: %s %s:%d\n", cusolverErrorString(code), file, line);
+        print_stacktrace();
         exit(code);
     }
 }
