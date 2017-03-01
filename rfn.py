@@ -192,6 +192,8 @@ def train_rfn(X, n_hidden, n_iter, etaW, etaP, minP, dropout_rate,
 
     if sparse.issparse(X):
         X = X.tocsr().astype(np.float32)
+        if not X.has_canonical_format:
+            X = X.sorted_indices()
         _librfn.train_rfn_sparse(X.data, X.indices, X.indptr, W, P, X.shape[0], X.shape[1], n_hidden, n_iter,
                           batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
                           l2_weightdecay, l1_weightdecay, momentum, _input_noise_types[input_noise_type],
