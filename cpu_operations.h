@@ -6,16 +6,12 @@ Licensed under GPL, version 2 or a later (see LICENSE.txt)
 
 #include <cstring>
 #include <cstdlib>
-#include <cstdio>
 #include <cmath>
-#include <cassert>
+#include <typeinfo> /* for typeid */
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
-#include <typeinfo> /* for typeid */
-
 
 extern "C" {
 extern void sgemm_(const char *transa, const char *transb, const int *m, const int *n, const int *k, const float *alpha,
@@ -35,6 +31,12 @@ using std::cos;
 using std::log;
 using std::sqrt;
 
+#ifdef COMPILE_FOR_R
+#include "use_R_impl.h"
+#else
+#include <cstdio>
+#include <cassert>
+
 using std::rand;
 using std::srand;
 
@@ -47,7 +49,7 @@ inline double rand_unif(void) {
 inline double rand_normal(void) {
     return sqrt(-2.0 * log(rand_unif())) * cos(2.0 * M_PI * rand_unif());
 }
-
+#endif
 
 inline double rand_exp(double lambda) /* inversion sampling */
 {

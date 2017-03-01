@@ -13,6 +13,13 @@ Licensed under GPL, version 2 or a later (see LICENSE.txt)
 #include "gpu_operations.h"
 #endif
 
+#ifndef COMPILE_FOR_R
+#include <stdio.h>
+#include <assert.h>
+#else
+#include "use_R_impl.h"
+#endif
+
 float time_diff(struct timeval *t2, struct timeval *t1) {
     long int diff = (t2->tv_usec + 1000000 * t2->tv_sec) - (t1->tv_usec + 1000000 * t1->tv_sec);
     return diff / 1000000.0f;
@@ -338,7 +345,6 @@ int train_rfn(const float* X, float* W, float* P, const int n,
               const float momentum,
               const int input_noise_type, const int activation_type, const int apply_scaling,
               const int applyNewtonUpdate, unsigned long seed, const int gpu_id) {
-
     if (gpu_id == USE_CPU) {
         if (k > m) {
             return train<CPU_Operations, true, float *, const float *>(X, W, P, n, m, k,
