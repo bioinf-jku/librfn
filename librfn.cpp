@@ -130,11 +130,13 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
     struct timeval t0, t1;
     gettimeofday(&t0, 0);
 
-    if (n == batch_size)
-        op.calculate_column_variance(X, batch_size, m, XCov_diag);
+    if (n == batch_size) {
+        op.calculate_column_variance(X, batch_size, m, XCov_diag, 1e-6);
+        //op.printMatrixRM(XCov_diag, 1, m, "%1.2e ");
+    }
 
     for (int cur_iter = 0; cur_iter < n_iter; ++cur_iter) {
-        if (cur_iter % 25 == 0) {
+        if (cur_iter % 1 == 0) {
             gettimeofday(&t1, 0);
             printf("epoch: %4d  (time: %6.2fs)\n", cur_iter, time_diff(&t1, &t0));
         }
@@ -149,7 +151,6 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             }
 
             XType Xnoise;
-
             if (input_noise_type && input_noise_rate > 0.0f) {
                 op.memcpy_matrix(Xtmp, X, batch_size, m, cur_batch);
                 switch(input_noise_type) {
@@ -177,7 +178,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             if (!(input_noise_type && input_noise_rate > 0.0f))
             {
                /* free matrix only if it's sparse */
-               op.free_sparse(Xnoise);
+               //op.free_sparse(Xnoise);
             }
 
             switch (activation_type) {
@@ -191,7 +192,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             }
 
             if (apply_scaling) {
-                op.calculate_column_variance(H, batch_size, k, variance_H);
+                op.calculate_column_variance(H, batch_size, k, variance_H, 1e-6);
                 op.invsqrt(variance_H, k);
                 op.scale_columns(H, batch_size, k, variance_H);
             }
@@ -206,7 +207,6 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
                 op.axpy(k*k, 1.0f, WPWinv, 1, S, 1);
             }
             XType XBatch = op.get_batch(X, m, cur_batch, batch_size);
-
             op.gemm("n", "t", m, k, batch_size, 1.0f/batch_size, XBatch, m, H, k, 0.0f, U, m);
 
             if (applyNewtonUpdate) {
@@ -224,16 +224,14 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
                     op.axpy(m*k, -l2_weightdecay, W, 1, dW, 1);
                 }
             }
-
             op.gemm("n", "n", m, k, k, 1.0f, W, m, S, k, -2.0f, U, m);
             op.gemm("n", "t", m, m, k, 1.0f, U, m, W, m, 0.0f, C, m);
 
             if (batch_size < n) {
-                op.calculate_column_variance(XBatch, batch_size, m, dP);
+                op.calculate_column_variance(XBatch, batch_size, m, dP, 1e-6);
             } else {
                 op.memcpy(dP, XCov_diag, m*sizeof(float));
             }
-
             op.free_sparse(XBatch);
 
             op.axpy(m, 1.0f, C, m+1, dP, 1);
@@ -320,7 +318,7 @@ void calculate_W(XTypeConst X_host, const float* W_host, const float* P_host,
     }
 
     if (apply_scaling){
-        op.calculate_column_variance(H, n, k, variance_H);
+        op.calculate_column_variance(H, n, k, variance_H, 1e-6);
         op.invsqrt(variance_H, k);
         op.scale_rows(Wout, k, m, variance_H);
     }

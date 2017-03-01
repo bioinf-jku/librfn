@@ -129,7 +129,7 @@ __global__ void invert_eltw(float* x, const unsigned size) {
     }
 }
 
-__global__ void col_variance_kernel(const float* X, float* var, const unsigned nrows, const unsigned ncols) {
+__global__ void col_variance_kernel(const float* X, float* var, const unsigned nrows, const unsigned ncols, float eps) {
     const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned num_threads = blockDim.x * gridDim.x;
     for (unsigned i = tid; i < ncols; i += num_threads) {
@@ -144,6 +144,7 @@ __global__ void col_variance_kernel(const float* X, float* var, const unsigned n
             var[i] += tmp * tmp;
         }
         var[i] /= nrows;
+        var[i] += eps; // for numerical stability
     }
 }
 
@@ -151,7 +152,7 @@ __global__ void invsqrt_eltw(float* x, const unsigned k) {
     const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned num_threads = blockDim.x * gridDim.x;
     for (unsigned i = tid; i < k; i += num_threads) {
-        x[i] = (x[i] > 1e-7) ? rsqrtf(x[i]) : 1.0;
+        x[i] = rsqrtf(x[i] + 1e-8);
     }
 }
 
@@ -181,7 +182,7 @@ __global__ void subtract_first_kernel(int* x, const unsigned len) {
 }
 
 __global__ void sparse_col_variance_kernel(const GPU_Operations::SparseMatrix X, float* var, const unsigned nrows,
-        const unsigned ncols) {
+        const unsigned ncols, float eps) {
     const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned num_threads = blockDim.x * gridDim.x;
     for (unsigned i = tid; i < ncols; i += num_threads) {
@@ -203,11 +204,12 @@ __global__ void sparse_col_variance_kernel(const GPU_Operations::SparseMatrix X,
         }
         var[i] += (nrows - nonzero_per_column) * (m * m);
         var[i] /= nrows;
+        var[i] += eps; // for numerical stability
     }
 }
 
 __global__ void sparse_row_variance_kernel(const GPU_Operations::SparseMatrix X, float* var, const unsigned nrows,
-        const unsigned ncols) {
+        const unsigned ncols, float eps) {
     const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned num_threads = blockDim.x * gridDim.x;
     for (unsigned i = tid; i < nrows; i += num_threads) {
@@ -225,6 +227,7 @@ __global__ void sparse_row_variance_kernel(const GPU_Operations::SparseMatrix X,
         }
         var[i] += (ncols - to + from) * (m * m);
         var[i] /= ncols;
+        var[i] += eps; // for numerical stability
     }
 }
 
@@ -428,10 +431,10 @@ void GPU_Operations::fill_eye(float* X, unsigned n) const {
 }
 
 void GPU_Operations::calculate_column_variance(const float* X, const unsigned nrows, const unsigned ncols,
-        float* variance) const {
+        float* variance, float eps) const {
     int threads, blocks;
     get_grid_sizes(ncols, &threads, &blocks);
-    col_variance_kernel<<<threads, blocks>>>(X, variance, nrows, ncols);
+    col_variance_kernel<<<threads, blocks>>>(X, variance, nrows, ncols, eps);
 }
 
 void GPU_Operations::invsqrt(float* s, const unsigned n) const {
@@ -460,11 +463,11 @@ void GPU_Operations::subtract_first_element(int* a, unsigned len) const {
 }
 
 void GPU_Operations::calculate_column_variance(const SparseMatrix* X, const unsigned nrows, const unsigned ncols,
-        float* variance) {
+        float* variance, float eps) {
     int threads, blocks;
     SparseMatrix* x_transpose = transpose(X, ncols);
     get_grid_sizes(nrows, &threads, &blocks);
-    sparse_row_variance_kernel<<<threads, blocks>>>(*x_transpose, variance, ncols, nrows);
+    sparse_row_variance_kernel<<<threads, blocks>>>(*x_transpose, variance, ncols, nrows, eps);
     free(x_transpose->columns);
     free(x_transpose->values);
     free(x_transpose->rowPointers);

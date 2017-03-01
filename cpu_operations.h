@@ -241,8 +241,8 @@ void fill(float* X, const int size, const float value) const {
     }
 }
 
-void calculate_column_variance(const float* X, const unsigned nrows, const unsigned ncols, float* variances);
-void calculate_column_variance(SparseMatrix X, const unsigned nrows, const unsigned ncols, float* variances);
+void calculate_column_variance(const float* X, const unsigned nrows, const unsigned ncols, float* variances, float eps);
+void calculate_column_variance(SparseMatrix X, const unsigned nrows, const unsigned ncols, float* variances, float eps);
 
 void invsqrt(float* s, const unsigned n) const;
 

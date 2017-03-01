@@ -142,9 +142,13 @@ CPU_Operations::SparseMatrix CPU_Operations::malloc_matrix(int rows, int cols, S
     return create(rows, cols);
 }
 
-void CPU_Operations::calculate_column_variance(SparseMatrix X, const unsigned nrows, const unsigned ncols, float* variances) {
+void CPU_Operations::calculate_column_variance(SparseMatrix X, const unsigned nrows, const unsigned ncols, float* variances, float eps) {
     memset(variances, 0, ncols * sizeof(float));
     scolvars(X, variances);
+
+    // for numerical stability of the algorithm
+    for (int i = 0; i < ncols; ++i)
+        variances[i] += eps;
 }
 
 void CPU_Operations::scale_columns(SparseMatrix X, const unsigned nrows, const unsigned ncols, float* s) const {
@@ -188,7 +192,7 @@ void CPU_Operations::add_gauss_noise(SparseMatrix X, const unsigned size, const 
 
 
 void CPU_Operations::calculate_column_variance(const float* X, const unsigned nrows,
-                                               const unsigned ncols, float* variances) {
+                                               const unsigned ncols, float* variances, float eps) {
     colmeans(X, var_tmp, nrows, ncols);
     memset(variances, 0, ncols*sizeof(float));
     for (unsigned i = 0; i < nrows; ++i) {
@@ -200,6 +204,7 @@ void CPU_Operations::calculate_column_variance(const float* X, const unsigned nr
 
     for (unsigned j = 0; j < ncols; ++j) {
         variances[j] /= nrows;
+        variances[j] += eps; // for numerical stability
     }
 }
 
@@ -209,7 +214,7 @@ void CPU_Operations::invsqrt(float* s, const unsigned n) const {
         if (s[j] == 0)
             s[j] = 1.0f;
         else
-            s[j] = 1.0 / sqrtf(s[j]);
+            s[j] = 1.0 / sqrtf(s[j] + 1e-8);
     }
 }
 

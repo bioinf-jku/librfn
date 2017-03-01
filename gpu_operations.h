@@ -377,14 +377,14 @@ void invsqrt(float* s, const unsigned n) const;
 
 void invert(float* X, const unsigned size) const;
 
-void calculate_column_variance(const float* X, const unsigned nrows, const unsigned ncols, float* variances) const;
+void calculate_column_variance(const float* X, const unsigned nrows, const unsigned ncols, float* variances, float eps) const;
 void scale_columns(float* X, const unsigned nrows, const unsigned ncols, float* s) const;
 void scale_rows(float* X, const unsigned nrows, const unsigned ncols, float* s) const;
 void dropout(float* X, const unsigned size, const float dropout_rate) const;
 void add_saltpepper_noise(float* X, const unsigned size, const float noise_rate) const;
 void add_gauss_noise(float* X, const unsigned size, const float noise_rate) const;
 
-void calculate_column_variance(const SparseMatrix* X, const unsigned nrows, const unsigned ncols, float* variances);
+void calculate_column_variance(const SparseMatrix* X, const unsigned nrows, const unsigned ncols, float* variances, float eps);
 void scale_columns(SparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const;
 void scale_rows(SparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const;
 void dropout(SparseMatrix* X, const unsigned size, const float dropout_rate) const;
