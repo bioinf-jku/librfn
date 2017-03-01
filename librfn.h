@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 
-const int USE_CPU = 2;
+const int USE_CPU = -2;
 
 
 /**
