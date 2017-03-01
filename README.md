@@ -6,6 +6,7 @@ Rectified Factor Networks (RFNs) are an unsupervised technique that learns a non
 
 librfn is implemented in C++ and can be easily integrated in existing code bases. It also contains a high-level Python wrapper for ease of use. The library can run in either CPU or GPU mode. For larger models the GPU mode offers large speedups and is the recommended mode.
 
+librfn has been written by [Thomas Unterthiner](http://www.bioinf.jku.at/people/unterthiner/) . Sparse matrix support was added by Balázs Bencze and Thomas Adler.
 
 # Installation
 
