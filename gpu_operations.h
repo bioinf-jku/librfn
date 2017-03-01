@@ -17,7 +17,7 @@ Licensed under GPL, version 2 or a later (see LICENSE.txt)
 #include <typeinfo> /* for typeid */
 
 #ifndef COMPILE_FOR_R
-#include <cstdio.h>
+#include <stdio.h>
 #include <assert.h>
 #else
 #include "use_R_impl.h"
