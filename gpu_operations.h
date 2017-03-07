@@ -174,7 +174,7 @@ struct SparseMatrix {
 	float *values;
 	int *columns;
 	int *rowPointers;
-	int m; // number of rows
+	int n; // number of rows
 	int nnz; // number of nonzero elements
 };
 
@@ -421,7 +421,7 @@ SparseMatrix* memcpy_matrix(SparseMatrix* dest, SparseMatrix* src, int nrows_to_
     CUDA_CALL(cudaMemcpy(&toIndex  , &src->rowPointers[first_row + nrows_to_copy], sizeof(int), cudaMemcpyDeviceToHost));
 
     dest->nnz = (toIndex - fromIndex);
-    dest->m = nrows_to_copy;
+    dest->n = nrows_to_copy;
 
     dest->values = malloc(dest->nnz * sizeof(float));
     dest->columns = malloci(dest->nnz * sizeof(int));
@@ -470,7 +470,7 @@ SparseMatrix* get_batch(SparseMatrix* X, int ncol, int batch_num, int batch_size
     CUDA_CALL(cudaMemcpy(&toIndex  , &X->rowPointers[from + nrows], sizeof(int), cudaMemcpyDeviceToHost));
 
     dest->nnz = (toIndex - fromIndex);
-    dest->m = nrows;
+    dest->n = nrows;
     dest->values = &X->values[fromIndex];
     dest->columns = &X->columns[fromIndex];
     dest->rowPointers = malloci((nrows + 1) * sizeof(int));
@@ -488,8 +488,8 @@ SparseMatrix* transpose(const SparseMatrix* x, int ncol) {
     t->rowPointers = //(int*) get_buffer((ncol + 1) * sizeof(int));
             malloci((ncol + 1) * sizeof(int));
     t->nnz = x->nnz;
-    t->m = ncol;
-    CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, x->m, ncol, x->nnz, x->values, x->rowPointers, x->columns, t->values,
+    t->n = ncol;
+    CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, x->n, ncol, x->nnz, x->values, x->rowPointers, x->columns, t->values,
             t->columns, t->rowPointers, CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO));
 
     return t;
@@ -505,6 +505,7 @@ void printm(const char* name, const float* a, int n, int m) const {
     printf("%s\n", name);
     printMatrixRM(a, n, m, 0);
 }
+
 
 void printMatrixCM(const float* a, int n, int m, const char* fmt) const;
 void printMatrixRM(const float* a, int n, int m, const char* fmt) const;

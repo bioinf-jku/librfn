@@ -242,7 +242,7 @@ __global__ void sparse_scale_columns_kernel(GPU_Operations::SparseMatrix X, floa
 __global__ void sparse_scale_rows_kernel(GPU_Operations::SparseMatrix X, float* a) {
     const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned num_threads = blockDim.x * gridDim.x;
-    for (unsigned i = tid; i < X.m; i += num_threads) {
+    for (unsigned i = tid; i < X.n; i += num_threads) {
         for (unsigned j = X.rowPointers[i]; j < X.rowPointers[i + 1]; ++j) {
             X.values[j] *= a[i];
         }
@@ -354,8 +354,8 @@ GPU_Operations::SparseMatrix* GPU_Operations::to_device(const SparseMatrix* src,
 
     dst->values = to_device(src->values, src->nnz * sizeof(float));
     dst->columns = to_device(src->columns, src-> nnz * sizeof(int));
-    dst->rowPointers = to_device(src->rowPointers, (src->m + 1) * sizeof(int));
-    dst->m = src->m;
+    dst->rowPointers = to_device(src->rowPointers, (src->n + 1) * sizeof(int));
+    dst->n = src->n;
     dst->nnz = src->nnz;
 
     return dst;
@@ -484,7 +484,7 @@ void GPU_Operations::scale_columns(SparseMatrix* X, const unsigned nrows, const 
 
 void GPU_Operations::scale_rows(SparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
     int threads, blocks;
-    get_grid_sizes(X->m, &threads, &blocks);
+    get_grid_sizes(X->n, &threads, &blocks);
     sparse_scale_rows_kernel<<<threads, blocks>>>(*X, s);
 }
 
@@ -513,10 +513,10 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 
     int ncol_a = k;
     if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-        ncol_a = a->m;
+        ncol_a = a->n;
     }
 
-    CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, row_major_a->m, n, ncol_a,
+    CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, row_major_a->n, n, ncol_a,
             row_major_a->nnz, &alpha, descr, row_major_a->values, row_major_a->rowPointers, row_major_a->columns, b, ldb, &beta, c, ldc));
 
 
@@ -540,7 +540,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
         b_trans->values = b->values;
         b_trans->columns = b->columns;
         b_trans->rowPointers = b->rowPointers;
-        b_trans->m = b->m;
+        b_trans->n = b->n;
         b_trans->nnz = b->nnz;
     }
 
@@ -555,10 +555,10 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
     CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans->nnz, &bufsize));
     void* buffer = get_buffer(bufsize);
 
-    int* row_pointers = (int*) std::malloc((b_trans->m + 1) * sizeof(int));
-    copy_to_host(b_trans->rowPointers, row_pointers, (b_trans->m + 1) * sizeof(int));
+    int* row_pointers = (int*) std::malloc((b_trans->n + 1) * sizeof(int));
+    copy_to_host(b_trans->rowPointers, row_pointers, (b_trans->n + 1) * sizeof(int));
 
-    for(unsigned r = 0; r < b_trans->m; ++r) {
+    for(unsigned r = 0; r < b_trans->n; ++r) {
         int row_pointer = row_pointers[r];
         int nnz = row_pointers[r + 1] - row_pointer;
 
@@ -600,13 +600,13 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
     int b2_ncol = 0;
     if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
         b2 = transpose(b, n);
-        b2_ncol = b->m;
+        b2_ncol = b->n;
     } else {
         b2 = (SparseMatrix*) std::malloc(sizeof(SparseMatrix));
         b2->values = b->values;
         b2->columns = b->columns;
         b2->rowPointers = b->rowPointers;
-        b2->m = b->m;
+        b2->n = b->n;
         b2->nnz = b->nnz;
         b2_ncol = k;
     }
@@ -626,11 +626,11 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
     }
 
     //5)
-    CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, CUSPARSE_OPERATION_NON_TRANSPOSE, opA2, b2->m, m, b2_ncol, b2->nnz, &alpha, descr,
-            b2->values, b2->rowPointers, b2->columns, a, lda, &beta, c2, b2->m));
+    CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, CUSPARSE_OPERATION_NON_TRANSPOSE, opA2, b2->n, m, b2_ncol, b2->nnz, &alpha, descr,
+            b2->values, b2->rowPointers, b2->columns, a, lda, &beta, c2, b2->n));
 
     //6
-    CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, m, n, &alpha_t, c2, b2->m, &beta_t, (float*)0, b2->m, c, ldc));
+    CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, m, n, &alpha_t, c2, b2->n, &beta_t, (float*)0, b2->n, c, ldc));
     if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
         free(b2->columns);
         free(b2->values);
@@ -673,22 +673,22 @@ void GPU_Operations::printMatrixSP(const SparseMatrix *a, const char* fmt) const
     const char* format = fmt == 0 ? "%1.3f " : fmt;
     size_t size_values = a->nnz * sizeof(float);
     size_t size_columns = a->nnz * sizeof(int);
-    size_t size_pointers = (a->m + 1)* sizeof(int);
+    size_t size_pointers = (a->n + 1)* sizeof(int);
 
     float* tmp_vals = (float*) std::malloc(size_values);
     int* tmp_cols = (int*) std::malloc(size_columns);
     int* tmp_pointers = (int*) std::malloc(size_pointers);
 
+    CUDA_CALL(cudaMemcpy(tmp_pointers, a->rowPointers, size_pointers, cudaMemcpyDeviceToHost));
     CUDA_CALL(cudaMemcpy(tmp_vals, a->values, size_values, cudaMemcpyDeviceToHost));
     CUDA_CALL(cudaMemcpy(tmp_cols, a->columns, size_columns, cudaMemcpyDeviceToHost));
-    CUDA_CALL(cudaMemcpy(tmp_pointers, a->rowPointers, size_pointers, cudaMemcpyDeviceToHost));
-
+#if 0
     printf("values: ");
     for (int i = 0; i < a->nnz; i++) {
         printf(format, tmp_vals[i]);
     }
     printf("\npointers: ");
-    for (int i = 0; i <  a->m + 1; i++) {
+    for (int i = 0; i <  a->n + 1; i++) {
         printf("%d ", tmp_pointers[i]);
     }
     printf("\ncolumns: ");
@@ -696,6 +696,12 @@ void GPU_Operations::printMatrixSP(const SparseMatrix *a, const char* fmt) const
         printf("%d ", tmp_cols[i]);
     }
     printf("\n");
+#endif
+    fprintf(stderr, "%lu %lu %d\n", size_pointers / sizeof(int), size_values / sizeof(float), a->n);
+    fprintf(stderr, "Sparse Matrix: %d %d\n", a->n, tmp_pointers[a->n]);
+    fprintf(stderr, "pointers: %d %d (%d total)\n", tmp_pointers[0], tmp_pointers[a->n], tmp_pointers[a->n-1]);
+    fprintf(stderr, "columns:  %d %d (%d total)\n", tmp_cols[0], tmp_cols[a->nnz-1], a->nnz);
+
     std::free(tmp_vals);
     std::free(tmp_cols);
     std::free(tmp_pointers);
@@ -705,7 +711,7 @@ void GPU_Operations::printMatrixSPM(const SparseMatrix *a, int n, int m, const c
     const char* format = fmt == 0 ? "%1.3f " : fmt;
     size_t size_values = a->nnz * sizeof(float);
     size_t size_columns = a->nnz * sizeof(int);
-    size_t size_pointers = (a->m + 1)* sizeof(int);
+    size_t size_pointers = (a->n + 1)* sizeof(int);
 
     float* tmp_vals = (float*) std::malloc(size_values);
     int* tmp_cols = (int*) std::malloc(size_columns);
