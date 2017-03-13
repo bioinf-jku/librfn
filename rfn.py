@@ -182,9 +182,9 @@ def train_rfn(X, n_hidden, n_iter, etaW, etaP, minP, dropout_rate,
     if startW is None:
         W = rng.normal(scale=0.01, size=(n_hidden, X.shape[1])).astype(np.float32)
     else:
-        W = startW
+        W = startW.astype(np.float32, order="C")
     if isinstance(startP, np.ndarray):
-        P = startP
+        P = startP.astype(np.float32)
     else:
         P = np.array([startP] * X.shape[1], dtype=np.float32)
 
