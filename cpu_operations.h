@@ -25,6 +25,7 @@ extern int spotrf_(const char *uplo, int *n, float *a, int * lda, int *info);
 extern int spotrs_(const char *uplo, int *n, int *nrhs, float * a, int *lda, float *b, int *ldb, int *info);
 extern int sposv_(const char *uplo, int *n, int *nrhs, float * a, int *lda, float *b, int *ldb, int *info);
 extern int spotri_(const char *uplo, int *n, float *a, int *lda, int *info);
+extern float sdot_(const int *n, const float *x, const int* incx, const float *y, const int* incy);
 }
 
 using std::cos;
@@ -122,6 +123,11 @@ void dgmm(const char* mode, const int m, const int n, const float* A, int lda, c
 void symm(const char *side, const char *uplo, const int m, const int n, const float alpha, const float *a,
         const int lda, const float *b, const int ldb, const float beta, float *c, const int ldc) const {
     ssymm_(side, uplo, &m, &n, &alpha, a, &lda, b, &ldb, &beta, c, &ldc);
+}
+
+
+void dot(int n, const float *x, int incx, const float *y, int incy, float *result) {
+    *result = sdot_(&n, x, &incx, y, &incy);
 }
 
 void axpy(const int n, const float alpha, const float *dx, const int incx, float *dy, const int incy) const {

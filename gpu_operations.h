@@ -268,6 +268,14 @@ void symm(const char *side, const char *uplo, const int m, const int n,
     CUBLAS_CALL(cublasSsymm(handle, s, ul, m, n, &alpha,a, lda, b, ldb, &beta, c, ldc));
 }
 
+
+void dot (int n, const float *x, int incx, const float *y, int incy, float *result) {
+    CUBLAS_CALL(cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE));  // we pass result in device space
+    CUBLAS_CALL(cublasSdot(handle, n, x, incx, y, incy, result));
+    CUBLAS_CALL(cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_HOST));
+}
+
+
 void axpy(const int n, const float alpha, const float* x, const int incx, float *y, const int incy) const {
     CUBLAS_CALL(cublasSaxpy(handle, n, &alpha, x, incx, y, incy));
 }

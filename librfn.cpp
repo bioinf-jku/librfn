@@ -83,7 +83,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
     float* U = op.malloc(m*k*sizeof(float));
     float* Sinv = op.malloc(k*k*sizeof(float));
     float* dW = op.malloc(m*k*sizeof(float));
-    float* C = op.malloc(m*m*sizeof(float));
+    float* C = op.malloc(m*sizeof(float)); // Note: this only stores the diagonal of C
 
     XType Xtmp = op.template init_invalid<XType>();
     if (input_noise_rate > 0.0f)
@@ -225,7 +225,13 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
                 }
             }
             op.gemm("n", "n", m, k, k, 1.0f, W, m, S, k, -2.0f, U, m);
-            op.gemm("n", "t", m, m, k, 1.0f, U, m, W, m, 0.0f, C, m);
+
+            // we only need the diagonal of
+            //    op.gemm("n", "t", m, m, k, 1.0f, U, m, W, m, 0.0f, C, m);
+            // so we calculate it here, albeit in a very cache-unfriendlly way!
+            for (int i = 0; i < m; ++i) {
+                op.dot(k, U + i, m, W + i, m, C + i);
+            }
 
             if (batch_size < n) {
                 op.calculate_column_variance(XBatch, batch_size, m, dP, 1e-6);
@@ -234,7 +240,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             }
             op.free_batch(XBatch);
 
-            op.axpy(m, 1.0f, C, m+1, dP, 1);
+            op.axpy(m, 1.0f, C, 1, dP, 1);
             op.axpy(m, -1.0f, P, 1, dP, 1);
 
             op.axpy(m, etaP/n_batches, dP, 1, P, 1);
