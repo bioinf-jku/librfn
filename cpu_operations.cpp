@@ -76,6 +76,11 @@ CPU_Operations::SparseMatrix CPU_Operations::create_sparse_matrix(const float* X
     return suscr_csr(n, m, (float*) Xvals, (int*) Xcols, (int*) Xrowptr);
 }
 
+void CPU_Operations::free_sparse_matrix(CPU_Operations::SparseMatrix x) {
+    if (handle_valid(x))
+        destroy(x);
+}
+
 CPU_Operations::SparseMatrix CPU_Operations::get_batch(SparseMatrix X, int ldx, int batch_num, int batch_size) {
     return srowsubset(X, batch_num * batch_size, batch_size);
 }
@@ -147,7 +152,7 @@ void CPU_Operations::calculate_column_variance(SparseMatrix X, const unsigned nr
     scolvars(X, variances);
 
     // for numerical stability of the algorithm
-    for (int i = 0; i < ncols; ++i)
+    for (unsigned i = 0; i < ncols; ++i)
         variances[i] += eps;
 }
 

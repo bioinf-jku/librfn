@@ -178,7 +178,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             if (!(input_noise_type && input_noise_rate > 0.0f))
             {
                /* free matrix only if it's sparse */
-               //op.free_sparse(Xnoise);
+               op.free_batch(Xnoise);
             }
 
             switch (activation_type) {
@@ -232,7 +232,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             } else {
                 op.memcpy(dP, XCov_diag, m*sizeof(float));
             }
-            op.free_sparse(XBatch);
+            op.free_batch(XBatch);
 
             op.axpy(m, 1.0f, C, m+1, dP, 1);
             op.axpy(m, -1.0f, P, 1, dP, 1);
@@ -335,6 +335,7 @@ void calculate_W(XTypeConst X_host, const float* W_host, const float* P_host,
 
 extern "C" {
 
+
 int train_rfn(const float* X, float* W, float* P, const int n,
               const int m, const int k, const int n_iter, int batch_size,
               const float etaW, const float etaP, const float minP, const float h_threshold,
@@ -392,7 +393,7 @@ int train_rfn_sparse(const float* Xvals, const int* Xcols, const int *Xrowptr,
                         n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
                         l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
         }
-        //destroy(X);
+        CPU_Operations::free_sparse_matrix(X);
         return retval;
     } else {
 #ifndef NOGPU
@@ -406,6 +407,7 @@ int train_rfn_sparse(const float* Xvals, const int* Xcols, const int *Xrowptr,
                         n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
                         l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
         }
+        GPU_Operations::free_sparse_matrix(X);
 #else
         fprintf(stderr, "librfn was compiled without GPU support");
 #endif
@@ -435,11 +437,12 @@ void calculate_W_sparse(const float* Xvals, const int* Xcols, const int *Xrowptr
     if (gpu_id == USE_CPU) {
         const CPU_Operations::SparseMatrix X = CPU_Operations::create_sparse_matrix(Xvals, Xcols, Xrowptr, n, m);
         calculate_W<CPU_Operations, CPU_Operations::SparseMatrix, const CPU_Operations::SparseMatrix>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, -1);
-        //destroy(X);
+        CPU_Operations::free_sparse_matrix(X);
      } else {
 #ifndef NOGPU
         const GPU_Operations::SparseMatrix X = GPU_Operations::create_sparse_matrix(Xvals, Xcols, Xrowptr, n, m);
         calculate_W<GPU_Operations, GPU_Operations::SparseMatrix*, const GPU_Operations::SparseMatrix *>(&X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, gpu_id);
+        GPU_Operations::free_sparse_matrix(X);
 #else
         fprintf(stderr, "librfn was compiled without GPU support");
 #endif

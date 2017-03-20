@@ -334,6 +334,11 @@ GPU_Operations::SparseMatrix GPU_Operations::create_sparse_matrix(const float* X
     return X;
 }
 
+void GPU_Operations::free_sparse_matrix(const GPU_Operations::SparseMatrix& x) {
+    // We do nothing because we don't allocate when we create, either
+}
+
+
 
 float* GPU_Operations::to_device(const float* src, size_t size) const {
     float* dst = 0;

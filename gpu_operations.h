@@ -183,7 +183,7 @@ const SparseMatrix INVALID = {
 };
 
 static SparseMatrix create_sparse_matrix(const float* Xvals, const int* Xcols, const int *Xrowptr, int n, int m);
-
+static void free_sparse_matrix(const SparseMatrix& x);
 
 GPU_Operations(int n, int m, int k, unsigned long seed, int gpu_id);
 ~GPU_Operations();
@@ -437,10 +437,10 @@ SparseMatrix* memcpy_matrix(SparseMatrix* dest, SparseMatrix* src, int nrows_to_
 
 void subtract_first_element(int* a, unsigned len) const;
 
-void free_sparse(void *ptr) {
+void free_batch(void *ptr) {
 }
 
-void free_sparse(SparseMatrix* a) {
+void free_batch(SparseMatrix* a) {
     // see get batch
     if (handle_valid(a)) {
         free(a->rowPointers);

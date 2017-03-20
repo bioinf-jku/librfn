@@ -66,6 +66,7 @@ float* ones;
 typedef int SparseMatrix;
 
 static SparseMatrix create_sparse_matrix(const float* Xvals, const int* Xcols, const int *Xrowptr, int n, int m);
+static void free_sparse_matrix(SparseMatrix);
 
 
 template<typename T>
@@ -178,10 +179,10 @@ void free(void* ptr) const {
 
 void free(SparseMatrix a) const;
 
-void free_sparse(void *ptr) {
+void free_batch(void *ptr) {
 }
 
-void free_sparse(SparseMatrix a) {
+void free_batch(SparseMatrix a) {
     free(a);
 }
 
@@ -299,6 +300,10 @@ static void printMatrixCM(const SparseMatrix a, int n, int m, const char *fmt);
 
 static void printMatrixRM(const float* a, int n, int m, const char* fmt);
 static void printMatrixRM(const SparseMatrix a, int n, int m, const char *fmt);
+
+void printMatrixSP(const SparseMatrix& a, const char* fmt) const {
+    // TODO
+}
 
 void prints(const float* f, unsigned l) const {}
 
