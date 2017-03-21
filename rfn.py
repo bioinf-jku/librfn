@@ -256,7 +256,8 @@ class RectifiedFactorNetwork(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, x):
-        h = np.maximum(np.dot(x, self.wout.T), 0)
+        h = np.dot(x, self.wout.T)
+        h = np.maximum(n, 0, out=h)
         s = h.std(1)
         s[s < 1e-6] = 1
         h /= s[:, None]  ## TODO: should I really scale the h?
