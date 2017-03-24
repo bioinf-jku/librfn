@@ -6,4 +6,5 @@ RFN/*
 *.log
 *.pkl
 *.mp4
+Makevars
 .ipynb_checkpoints
