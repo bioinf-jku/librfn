@@ -425,10 +425,10 @@ void calculate_W(const float* X, const float* W, const float* P, float* Wout,
                  const int n, const int m, const int k, const int activation_type,
                  const int  apply_scaling, const float h_threshold, int gpu_id) {
     if (gpu_id == USE_CPU) {
-        return calculate_W<GPU_Operations, float *, const float *>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, gpu_id);
+        return calculate_W<CPU_Operations, float *, const float *>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, -1);
     } else {
 #ifndef NOGPU
-        return calculate_W<CPU_Operations, float *, const float *>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, -1);
+        return calculate_W<GPU_Operations, float *, const float *>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, gpu_id);
 #else
         fprintf(stderr, "librfn was compiled without GPU support");
 #endif
