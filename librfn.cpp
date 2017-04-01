@@ -20,6 +20,10 @@ Licensed under GPL, version 2 or a later (see LICENSE.txt)
 #include "use_R_impl.h"
 #endif
 
+#ifdef MEM_DEBUG
+size_t allocated_memory = 0;
+#endif
+
 float time_diff(struct timeval *t2, struct timeval *t1) {
     long int diff = (t2->tv_usec + 1000000 * t2->tv_sec) - (t1->tv_usec + 1000000 * t1->tv_sec);
     return diff / 1000000.0f;
@@ -67,6 +71,9 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
     }
 
     OP op(n, m, k, seed, gpu_id);
+#ifdef MEM_DEBUG
+    op.reset_memory_usage_counter();
+#endif
     XType X = op.to_device(X_host, m*n*sizeof(float));
     float* W = op.to_device(W_host, k*m*sizeof(float));
     float* P = op.to_device(P_host, m*sizeof(float));
@@ -274,6 +281,10 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
 
     op.to_host(W, W_host, m*k*sizeof(float));
     op.to_host(P, P_host, m*sizeof(float));
+    
+#ifdef MEM_DEBUG
+    op.print_memory_usage();
+#endif
     return 0;
 }
 

@@ -11,6 +11,10 @@ Licensed under GPL, version 2 or a later (see LICENSE.txt)
 
 #include "gpu_operations.h"
 
+#ifdef MEM_DEBUG
+size_t allocated_memory = 0;
+#endif
+
 static const int RNG_THREADS = 128;
 static const int RNG_BLOCKS = 128;
 

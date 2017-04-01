@@ -23,7 +23,9 @@ Licensed under GPL, version 2 or a later (see LICENSE.txt)
 #include "use_R_impl.h"
 #endif
 
-
+#ifdef DEBUG
+extern size_t allocated_memory;
+#endif
 
 // This code to print a stack trace will only work on Linux
 #ifndef NDEBUG
@@ -353,6 +355,9 @@ void free_devicememory(SparseMatrix* matrix) {
 }
 
 float* malloc(size_t size) const {
+#ifdef MEM_DEBUG
+    allocated_memory += size;
+#endif    
     float* retval = 0;
     cudaError_t err = cudaMalloc(&retval, size);
     CUDA_CALL(err);
@@ -364,6 +369,9 @@ float* malloc(size_t size) const {
 }
 
 int* malloci(size_t size) const {
+#ifdef MEM_DEBUG
+    allocated_memory += size;
+#endif
     int* retval = 0;
     cudaError_t err = cudaMalloc(&retval, size);
     CUDA_CALL(err);
@@ -544,4 +552,14 @@ void printsu(const int* f, unsigned l) const {
     printf("\n");
     std::free(src);
 }
+
+#ifdef MEM_DEBUG
+void print_memory_usage() {
+    printf("Memory usage: %zu bytes\n", allocated_memory);
+}
+
+void reset_memory_usage_counter() {
+    allocated_memory = 0;
+}
+#endif
 };
