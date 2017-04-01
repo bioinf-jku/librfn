@@ -23,7 +23,7 @@ Licensed under GPL, version 2 or a later (see LICENSE.txt)
 #include "use_R_impl.h"
 #endif
 
-#ifdef DEBUG
+#ifdef MEM_DEBUG
 extern size_t allocated_memory;
 #endif
 
