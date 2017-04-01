@@ -324,4 +324,15 @@ void printm(const char* name, const float* a, int n, int m) const {
     printf("%s\n", name);
     printMatrixCM(a, n, m, 0);
 }
+
+#ifdef MEM_DEBUG
+void reset_memory_usage_counter() {
+    // TODO
+}
+
+void print_memory_usage() {
+    // TODO
+    printf("Memory usage logging is not implemented in the CPU version");
+}
+#endif
 };
