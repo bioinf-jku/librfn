@@ -20,10 +20,6 @@ Licensed under GPL, version 2 or a later (see LICENSE.txt)
 #include "use_R_impl.h"
 #endif
 
-#ifdef MEM_DEBUG
-size_t allocated_memory = 0;
-#endif
-
 float time_diff(struct timeval *t2, struct timeval *t1) {
     long int diff = (t2->tv_usec + 1000000 * t2->tv_sec) - (t1->tv_usec + 1000000 * t1->tv_sec);
     return diff / 1000000.0f;
