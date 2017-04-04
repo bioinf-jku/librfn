@@ -346,6 +346,9 @@ void GPU_Operations::free_sparse_matrix(const GPU_Operations::SparseMatrix& x) {
 
 float* GPU_Operations::to_device(const float* src, size_t size) const {
     float* dst = 0;
+#ifdef MEM_DEBUG
+    allocated_memory += size;
+#endif 
     CUDA_CALL(cudaMalloc(&dst, size));
     CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice));
     return dst;
@@ -353,6 +356,9 @@ float* GPU_Operations::to_device(const float* src, size_t size) const {
 
 int* GPU_Operations::to_device(const int* src, size_t size) const {
     int* dst = 0;
+#ifdef MEM_DEBUG
+    allocated_memory += size;
+#endif 
     CUDA_CALL(cudaMalloc(&dst, size));
     CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice));
     return dst;
