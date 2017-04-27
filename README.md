@@ -25,43 +25,8 @@ Note that librfn makes heavy use of BLAS and LAPACK, so make sure to link it to 
 
 # Usage
 
-The following code trains an RFN on MNIST and plots the resulting filters::
-
-    import numpy as np
-    import matplotlib.pyplot as plt
-
-    from sklearn.datasets import fetch_mldata
-    mnist = fetch_mldata('MNIST original')
-    X = mnist['data'] / 255.0
-
-    from rfn import *
-    W, P, Wout = train_rfn(X, 128, 500, 0.1, 0.1, 1e-1, 0.0, gpu_id=0)
-
-    # plot weights
-    fig, ax = plt.subplots(5, 5, figsize=(8, 8))
-    for i, a in enumerate(ax.flat):
-        a.pcolorfast(W[i].reshape(28, 28), cmap=plt.cm.Greys_r)
-        a.set_ylim(28, 0)
-        a.grid("off")
-        a.set_axis_off()
-    fig.subplots_adjust(0, 0, 1, 1, 0, 0)
-    fig
-
-    # calculate hidden units and reconstructions
-    H = np.maximum(0, np.dot(Wout, X.T))
-    R = np.dot(H.T, W)
-
-    # plot reconstructions
-    np.random.shuffle(R)  # shuffle samples, otherwhise we only plot 0s
-    fig, ax = plt.subplots(5, 5, figsize=(8, 8))
-    for i, a in enumerate(ax.flat):
-        a.pcolorfast(R[i].reshape(28, 28), cmap=plt.cm.Greys_r)
-        a.set_ylim(28, 0)
-        a.grid("off")
-        a.set_axis_off()
-    fig.subplots_adjust(0, 0, 1, 1, 0, 0)
-    fig
-
+* Python wrapper: [librfn-python repository](https://github.com/bioinf-jku/librfn-python).
+* R extension: [librfn-R repository](https://github.com/bioinf-jku/librfn-R).
 
 # Implementation Note
 
