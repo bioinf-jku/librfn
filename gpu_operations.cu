@@ -330,7 +330,10 @@ GPU_Operations::~GPU_Operations() {
         CUDA_CALL(cudaStreamSynchronize(streams[i]));
         CUDA_CALL(cudaStreamDestroy(streams[i]));
     }
+    
     CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
+    CUSPARSE_CALL(cusparseDestroy(cusparse_handle));
+    CUDA_CALL(cudaFree(rng_state))
 }
 
 GPU_Operations::SparseMatrix GPU_Operations::create_sparse_matrix(const float* Xvals, const int* Xcols, const int *Xrowptr, int n, int m){

@@ -419,11 +419,21 @@ T malloc_matrix(int rows, int cols) {
 
 SparseMatrix* malloc_matrix(int rows, int cols, SparseMatrix* dummy) {
     SparseMatrix* matrix = (SparseMatrix*) std::malloc(sizeof(SparseMatrix));
+    matrix->rowPointers = malloci((rows + 1) * sizeof(int)); 
     return matrix;
 }
 
 float* malloc_matrix(int rows, int cols, float *dummy) {
     return (float*) malloc(rows * cols * sizeof(float));
+}
+
+void free_malloc_matrix(float* matrix) {
+  free(matrix);
+}
+
+void free_malloc_matrix(SparseMatrix* matrix) {
+  free(matrix->rowPointers);
+  std::free(matrix);
 }
 
 float *memcpy_matrix(float *dest, float *src, int nrows_to_copy, int src_ncol, int first_row = 0) const {
@@ -441,7 +451,8 @@ SparseMatrix* memcpy_matrix(SparseMatrix* dest, SparseMatrix* src, int nrows_to_
 
     dest->values = malloc(dest->nnz * sizeof(float));
     dest->columns = malloci(dest->nnz * sizeof(int));
-    dest->rowPointers = malloci((nrows_to_copy + 1) * sizeof(int));
+    // rowPointers already exists, see malloc_matrix, free_malloc_matrix and free_memcpy_matrix
+    //dest->rowPointers = malloci((nrows_to_copy + 1) * sizeof(int));
 
     memcpy(dest->values, &src->values[fromIndex], dest->nnz * sizeof(float));
     memcpy(dest->columns, &src->columns[fromIndex], dest->nnz * sizeof(int));
@@ -449,6 +460,15 @@ SparseMatrix* memcpy_matrix(SparseMatrix* dest, SparseMatrix* src, int nrows_to_
     subtract_first_element(dest->rowPointers, nrows_to_copy + 1);
 
     return dest;
+}
+
+void free_memcpy_matrix(float* matrix) {
+  // do nothing
+}
+
+void free_memcpy_matrix(SparseMatrix* matrix) {
+  free(matrix->values);
+  free(matrix->columns);
 }
 
 void subtract_first_element(int* a, unsigned len) const;

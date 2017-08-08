@@ -126,8 +126,8 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
         op.free(WPWchol);
         op.free(WPWinv);
         op.free(Wtmp);
-        op.free(Xtmp);
         op.free(XCov_diag);
+        op.free_malloc_matrix(Xtmp);
         return -1;
     }
     struct timeval t0, t1;
@@ -177,11 +177,11 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             }
 
             op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
-
-            if (!(input_noise_type && input_noise_rate > 0.0f))
-            {
-               /* free matrix only if it's sparse */
-               op.free_batch(Xnoise);
+            
+            if (input_noise_type && input_noise_rate > 0.0f) {
+              op.free_memcpy_matrix(Xnoise);
+            } else {
+              op.free_batch(Xnoise);
             }
 
             switch (activation_type) {
@@ -271,8 +271,8 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
     op.free(WPWchol);
     op.free(WPWinv);
     op.free(Wtmp);
-    op.free(Xtmp);
     op.free(XCov_diag);
+    op.free_malloc_matrix(Xtmp);
     op.free_devicememory(X);
 
     op.to_host(W, W_host, m*k*sizeof(float));
