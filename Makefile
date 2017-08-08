@@ -64,6 +64,9 @@ test: gpu_operations.o cpu_operations.o tests/tests.o tests/test_runner.o
 testbin: librfn.so tests/testbin.o
 	gcc tests/testbin.o -o testbin $(LIBPATH) $(LDFLAGS) -L./ -lrfn
 
+test_rfn: librfn.so tests/test_rfn.o
+	gcc tests/test_rfn.o -o test_rfn $(LIBPATH) $(LDFLAGS) -L./ -lrfn
+
 librfn.so: $(OBJECTS)
 	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS) -shared
 
