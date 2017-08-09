@@ -193,10 +193,25 @@ void free_batch(SparseMatrix a) {
 }
 
 void free_devicememory(void* ptr) const {
-    ;
+    free(ptr);
 }
 
 void free_devicememory(SparseMatrix X) const {
+    free(X);
+}
+
+void free_malloc_matrix(void* ptr) {
+    free(ptr);
+}
+
+void free_malloc_matrix(SparseMatrix m);
+
+void free_memcpy_matrix(void* ptr) {
+  // TODO
+}
+
+void free_memcpy_matrix(SparseMatrix m) {
+
 }
 
 template<typename T>

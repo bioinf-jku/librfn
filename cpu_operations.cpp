@@ -147,6 +147,10 @@ CPU_Operations::SparseMatrix CPU_Operations::malloc_matrix(int rows, int cols, S
     return create(rows, cols);
 }
 
+void CPU_Operations::free_malloc_matrix(SparseMatrix m) {
+    destroy(m);
+}
+
 void CPU_Operations::calculate_column_variance(SparseMatrix X, const unsigned nrows, const unsigned ncols, float* variances, float eps) {
     memset(variances, 0, ncols * sizeof(float));
     scolvars(X, variances);
