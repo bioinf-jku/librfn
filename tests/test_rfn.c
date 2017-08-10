@@ -9,6 +9,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+#define GPU_ID 1
 
 // random in (0, 1]
 static double rand_unif(void) {
@@ -169,7 +170,7 @@ int main(int argc, char** argv) {
     	printf("Testing GPU dense implementation.\n");
         for (int i = 0; i < repeat_test; i++) {
             begin = clock();
-            retval = train_rfn(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, USE_GPU_WITH_MOST_MEMORY);
+            retval = train_rfn(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, GPU_ID);
             end = clock();
             times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         }
@@ -181,7 +182,7 @@ int main(int argc, char** argv) {
     	printf("Testing GPU sparse implementation.\n");
     	for (int i = 0; i < repeat_test; i++) {
             begin = clock();
-            retval = train_rfn_sparse(sp.vals, sp.cols, sp.rowPtrs, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, USE_GPU_WITH_MOST_MEMORY);
+            retval = train_rfn_sparse(sp.vals, sp.cols, sp.rowPtrs, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.0, 1, 1, 1, 1, 32, GPU_ID);
             end = clock();
             times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         }
