@@ -428,12 +428,14 @@ float* malloc_matrix(int rows, int cols, float *dummy) {
 }
 
 void free_malloc_matrix(float* matrix) {
-  free(matrix);
+    free(matrix);
 }
 
 void free_malloc_matrix(SparseMatrix* matrix) {
-  free(matrix->rowPointers);
-  std::free(matrix);
+    if (matrix != &INVALID) {
+        free(matrix->rowPointers);
+        std::free(matrix);
+    }
 }
 
 float *memcpy_matrix(float *dest, float *src, int nrows_to_copy, int src_ncol, int first_row = 0) const {
