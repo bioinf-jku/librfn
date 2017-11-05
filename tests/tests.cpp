@@ -31,11 +31,11 @@ TEST_CASE( "to_host_and_to_device", "[gpu]" ) {
 template <class OP>
 float* test_variance(OP& op, float* X, unsigned nrows, unsigned ncols, float* expected) {
     float* var = (float*) op.malloc(ncols*sizeof(X[0]));
-    op.calculate_column_variance(X, nrows, ncols, var);
+    op.calculate_column_variance(X, nrows, ncols, var, 1e-6);
     float* res = (float*) malloc(ncols*sizeof(X[0]));
     op.copy_to_host(var, res, ncols*sizeof(var[0]));
     for (size_t i = 0; i < 3; ++i) {
-        CHECK(res[i] == expected[i]);
+        CHECK(abs(res[i] - expected[i]) < 1e-3);
     }
     free(res);
     return var;
@@ -124,13 +124,13 @@ TEST_CASE( "Scale rows GPU", "[operations]" ) {
 
 TEST_CASE( "invsqrt cpu", "[operations]" ) {
     CPU_Operations op(6, 6, 6, 0, -1);
-    float x_h[] = {0.0, 1.0, 2.0, 3.0, 4.0, 6.0, 10.0};
-    float e_h[] = {1.0, 1.0, 2.0, 3.0, 4.0, 6.0, 10.0};
+    float x_h[] = {1.0, 2.0, 3.0, 4.0, 5.0, 8.0, 10.0};
+    float e_h[] = {1.0, 2.0, 3.0, 4.0, 5.0, 8.0, 10.0};
     int n = sizeof(x_h) / sizeof(x_h[0]);
-    for (int i = 1; i < n; ++i)
+    for (int i = 0; i < n; ++i)
         e_h[i] = 1.0f / sqrt(x_h[i]);
     op.invsqrt(x_h, n);
-    for (size_t i = 0; i < 3; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         CHECK(abs(x_h[i] - e_h[i]) < 1e-3);
     }
 }
@@ -138,16 +138,16 @@ TEST_CASE( "invsqrt cpu", "[operations]" ) {
 
 TEST_CASE( "invsqrt gpu", "[operations]" ) {
     GPU_Operations op(6, 6, 6, 0, -1);
-    float x_h[] = {0.0, 1.0, 2.0, 3.0, 4.0, 6.0, 10.0};
-    float e_h[] = {1.0, 1.0, 2.0, 3.0, 4.0, 6.0, 10.0};
+    float x_h[] = {1.0, 2.0, 3.0, 4.0, 5.0, 8.0, 10.0};
+    float e_h[] = {1.0, 2.0, 3.0, 4.0, 5.0, 8.0, 10.0};
     int n = sizeof(x_h) / sizeof(x_h[0]);
-    for (int i = 1; i < n; ++i)
+    for (int i = 0; i < n; ++i)
         e_h[i] = 1.0f / sqrt(x_h[i]);
     float* x_d = op.to_device(x_h, sizeof(x_h));
     op.invsqrt(x_d, n);
-    float* res = (float*) malloc(n*sizeof(x_h[0]));
-    op.copy_to_host(x_d, res, n*sizeof(x_h[0]));
-    for (size_t i = 0; i < 3; ++i) {
+    float* res = (float*) malloc(n * sizeof(x_h[0]));
+    op.copy_to_host(x_d, res, n * sizeof(x_h[0]));
+    for (size_t i = 0; i < n; ++i) {
         CHECK(abs(res[i] - e_h[i]) < 1e-3);
     }
     op.free(x_d);
@@ -211,8 +211,8 @@ TEST_CASE( "Variance of CPU/GPU on large matrices", "[cpu_vs_gpu]" ) {
 
     float* var_h = cpu_op.malloc(m*sizeof(float));
     float* var_d = gpu_op.malloc(m*sizeof(float));
-    cpu_op.calculate_column_variance(X_h, n, m, var_h);
-    gpu_op.calculate_column_variance(X_d, n, m, var_d);
+    cpu_op.calculate_column_variance(X_h, n, m, var_h, 1e-6);
+    gpu_op.calculate_column_variance(X_d, n, m, var_d, 1e-6);
     float* var_gpu_h = cpu_op.malloc(m*sizeof(float));
     gpu_op.to_host(var_d, var_gpu_h, m*sizeof(float));
 

@@ -57,8 +57,8 @@ endif
 
 all: $(SOURCES) librfn.so
 
-test: gpu_operations.o cpu_operations.o tests/tests.o tests/test_runner.o
-	g++ $(LDFLAGS) $^ -o $@ $(LIBS)
+test: librfn.so tests/tests.o tests/test_runner.o
+	g++ $(LDFLAGS) $^ -o $@ $(LIBS) -L./ -lrfn
 	./test
 
 testbin: librfn.so tests/testbin.o
