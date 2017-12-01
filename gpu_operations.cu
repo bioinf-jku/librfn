@@ -544,67 +544,6 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
     std::free(row_major_a);
 }
 
-/*void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
-            const float alpha, const float *a, const int lda, const SparseMatrix* b, const int ldb,
-            const float beta, float *c, const int ldc) {
-    cusparseOperation_t opA = op_to_cusparse(transa);
-    cusparseOperation_t opB = op_to_cusparse(transb);
-    SparseMatrix* b_trans;
-
-    if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-        b_trans = transpose(b, n);
-    } else {
-        b_trans = (SparseMatrix*) std::malloc(sizeof(SparseMatrix));
-        b_trans->values = b->values;
-        b_trans->columns = b->columns;
-        b_trans->rowPointers = b->rowPointers;
-        b_trans->n = b->n;
-        b_trans->nnz = b->nnz;
-    }
-
-    int m_a = m; // number of rows of A
-    int n_a = k; // number of columns of A
-    if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-        m_a = k;
-        n_a = m;
-    }
-
-    int bufsize;
-    CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans->nnz, &bufsize));
-    void* buffer = get_buffer(bufsize);
-
-    int* row_pointers = (int*) std::malloc((b_trans->n + 1) * sizeof(int));
-    copy_to_host(b_trans->rowPointers, row_pointers, (b_trans->n + 1) * sizeof(int));
-
-    for(unsigned r = 0; r < b_trans->n; ++r) {
-        int row_pointer = row_pointers[r];
-        int nnz = row_pointers[r + 1] - row_pointer;
-
-        set_stream(r);
-
-        if (nnz == 0) {
-            CUBLAS_CALL(cublasSscal_v2(handle, n, &beta, &c[r * ldc], 1));
-        } else if (nnz > 0) {
-            CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, nnz,
-                    &b_trans->values[row_pointer], &b_trans->columns[row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
-        } else {
-            printf("Internal error");
-            exit(1);
-        }
-    }
-
-    synchronize_all_streams();
-    default_stream();
-
-    if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-        free(b_trans->values);
-        free(b_trans->columns);
-        free(b_trans->rowPointers);
-    }
-    std::free(b_trans);
-    std::free(row_pointers);
-}*/
-
 void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
             const float alpha, const float *a, const int lda, const SparseMatrix* b, const int ldb,
             const float beta, float *c, const int ldc) {
