@@ -507,7 +507,8 @@ void GPU_Operations::scale_rows(SparseMatrix* X, const unsigned nrows, const uns
 }
 
 void GPU_Operations::dropout(SparseMatrix* X, const unsigned size, const float dropout_rate) const {
-    dropout_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, X->nnz, dropout_rate, rng_state);
+    // Assuming that the random dropout rate would also hit the zero entries at the same rate.
+    dropout_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, X->nnz, dropout_rate * X->nnz / size, rng_state);
     assert(!cudaGetLastError());
 }
 
