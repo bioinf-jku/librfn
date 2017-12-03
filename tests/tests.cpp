@@ -223,7 +223,6 @@ TEST_CASE( "Variance of CPU/GPU on large matrices", "[cpu_vs_gpu]" ) {
 }
 
 
-
 TEST_CASE( "dgmm CPU/GPU", "[operations]" ) {
     unsigned n = 10;
     unsigned k = 10;
@@ -250,3 +249,223 @@ TEST_CASE( "dgmm CPU/GPU", "[operations]" ) {
         CHECK(ch[i] == dh[i]);
     }
 }
+
+
+typedef struct sparse {
+    float *vals;
+    int *indices; // nnz of row or column
+    int *pointers; // n + 1 column or row
+    int n;
+    int nnz;
+} sparse;
+
+// colmajor dense
+sparse colmajdense_to_cscsparse(const float* dense, const int n, const int m, const int lda) {
+    int nnz = 0;
+
+    int* colPointers = (int*) malloc((m + 1) * sizeof(int));
+	  colPointers[0] = 0;
+
+	  for (int i = 0; i < m; i++) {
+		    for (int j = 0; j < n; j++) {
+			      if (dense[i * lda + j] != 0) {
+				        nnz++;
+            }
+        }
+        colPointers[i + 1] = nnz;
+		}
+
+	  float* values = (float*) malloc(nnz * sizeof(float));
+	  int* rows = (int*) malloc(nnz * sizeof(int));
+	  int ind = 0;
+	  for (int i = 0; i < m; i++) {
+		    for (int j = 0; j < n; j++) {
+			      if (dense[i * lda + j] != 0) {
+				        values[ind] = dense[i * lda + j];
+				        rows[ind] = j;
+				        ind++;
+			      }
+		    }
+	  }
+	
+	  sparse sp = { .vals = values, .indices = rows, .pointers = colPointers, .n = m, .nnz = nnz};
+	  return sp;
+}
+
+sparse colmajdense_to_csrsparse(const float *dense, int n, int m, int lda) {
+    int nnz = 0;
+
+    int* rowPointers = (int*) malloc((n + 1) * sizeof(int));
+	  rowPointers[0] = 0;
+
+	  for (int i = 0; i < n; i++) {
+		    for (int j = 0; j < m; j++) {
+			      if (dense[j * lda + i] != 0) {
+				        nnz++;
+            }
+        }
+        rowPointers[i + 1] = nnz;
+		}
+
+	  float* values = (float*) malloc(nnz * sizeof(float));
+	  int* columns = (int*) malloc(nnz * sizeof(int));
+	  int ind = 0;
+	  for (int i = 0; i < n; i++) {
+		    for (int j = 0; j < m; j++) {
+			      if (dense[j * lda + i] != 0) {
+				        values[ind] = dense[j * lda + i];
+				        columns[ind] = j;
+				        ind++;
+			      }
+		    }
+	  }
+	
+	  sparse sp = { .vals = values, .indices = columns, .pointers = rowPointers, .n = n, .nnz = nnz};
+	  return sp;
+}
+
+void free_sparse(sparse sp) {
+    free(sp.vals);
+    free(sp.indices);
+    free(sp.pointers);
+}
+
+TEST_CASE( "gemm", "[operations]" ) {
+    // matrix size 2 * 3
+    // column major
+    float a[] = {
+        1.0, 3.0,
+        2.0, 1.0,
+        5.0, 1.0
+    };
+    // a transposed, 3 * 2
+    float at[] = {
+        1.0, 2.0, 5.0,
+        3.0, 1.0, 1.0
+    };
+    // matrix of size 3 * 4
+    float b[] = {
+        4.0, 1.0, 2.0,
+        4.0, 3.0, 2.0,
+        4.0, 4.0, 1.0,
+        7.0, 5.0, 1.0
+    };
+    // matrix of size 2 * 4
+    float c[] = {
+        1.0, 3.0,
+        3.0, 2.0,
+        8.0, 3.0,
+        4.0, 3.0
+    };
+    // matrix of size 2 * 4
+    float e[] = {
+        35.0, 39.0,
+        49.0, 40.0,
+        58.0, 43.0,
+        56.0, 63.0
+    };
+    float e2[] = {
+        32, 32,
+        40, 34,
+        34, 34,
+        44, 27
+    };
+    
+    int m = 2;
+    int n = 4;
+    int k = 3;
+    int lda = m;
+    int ldb = k;
+    int ldc = m;
+    float alpha = 2.0;
+    float beta = 3.0;
+    float *cc = (float*) malloc(ldc * n * sizeof(float));
+    SECTION( "cpu" ) {
+        CPU_Operations op(6, 6, 6, 0, -1);
+        memcpy(cc, c, ldc * n * sizeof(float));
+        
+        op.gemm("n", "n", m, n, k, alpha, a, lda, b, ldb, beta, cc, ldc);
+
+        for (int i = 0; i < ldc * n; ++i) {
+            CHECK(abs(cc[i] - e[i]) < 1e-3);
+        }
+    }
+    SECTION( "gpu" ) {
+        GPU_Operations op(6, 6, 6, 0, -1);
+
+        float *ah = op.to_device(a, lda * k * sizeof(float));
+        float *bh = op.to_device(b, ldb * n * sizeof(float));
+        float *ch = op.to_device(c, ldc * n * sizeof(float));
+
+        op.gemm("n", "n", m, n, k, alpha, ah, lda, bh, ldb, beta, ch, ldc);
+
+        float *cd = (float*) malloc(ldc * n * sizeof(float));
+        op.to_host(ch, cd, ldc * n * sizeof(float));
+
+        for (int i = 0; i < ldc * n; ++i) {
+            CHECK(abs(cd[i] - e[i]) < 1e-3);
+        }
+        op.free(ah);
+        op.free(bh);
+        free(cd);
+    }
+    SECTION( "cpu sparse" ) {
+        /*CPU_Operations op(6, 6, 6, 0, -1);
+        //csr asp = colmajdense_to_csrsparse(a, m, k, lda);
+        csc asp = colmajdense_to_cscsparse(a, m, k, lda);
+        //csc bsp = colmajdense_to_cscsparse(b, ldb, n);
+
+        //CPU_Operations::SparseMatrix as = op.create_sparse_matrix(asp.vals, asp.cols, asp.rowPtrs, m, k); 
+        CPU_Operations::SparseMatrix as = op.create_sparse_matrix(asp.vals, asp.rows, asp.colPtrs, m, k); 
+        //CPU_Operations::SparseMatrix bs = op.create_sparse_matrix(bsp.vals, bsp.rows, bsp.colPtrs, ldb, n);
+        
+        op.printMatrixCM(as, m, k, 0);
+
+        memcpy(cc, c, ldc * n * sizeof(float));
+         
+        op.gemm("n", "n", m, n, k, alpha, as, lda, b, ldb, beta, cc, ldc);
+        for (int i = 0; i < ldc * n; ++i) {
+            //CHECK(abs(cc[i] - e[i]) < 1e-3);
+        }*/
+
+        //memcpy(cc, c, ldc * n * sizeof(float));
+
+        //op.gemm("n", "n", m, n, k, alpha, a, lda, bs, ldb, beta, cc, ldc);
+        //for (int i = 0; i < ldc * n; ++i) {
+        //  CHECK(abs(cc[i] - e[i]) < 1e-3);
+        //}
+        //CPU_Operations::free_sparse_matrix(as);
+        //CPU_Operations::free_sparse_matrix(bs);
+        //free_csr(asp);
+        //free_sparse(bsp);
+   }
+   SECTION( "gpu sparse right" ) {
+        GPU_Operations op(6, 6, 6, 0, -1);
+
+        // Here we use CSC format, to implicitly transpose the B matrix.
+        // This is undone in the gemm interface for sparse matrix
+        sparse bsp = colmajdense_to_csrsparse(b, k, n, ldb);
+        GPU_Operations::SparseMatrix bsh = op.create_sparse_matrix(bsp.vals, bsp.indices, bsp.pointers, k, n);
+        GPU_Operations::SparseMatrix *bsd = op.to_device(&bsh, sizeof(int));
+
+        float *atd = op.to_device(at, lda * k * sizeof(float));
+        float *cd = op.to_device(c, ldc * n * sizeof(float));
+
+        op.gemm("t", "n", m, n, k, 1.0, atd, k, bsd, ldb, 0.0, cd, ldc);
+        
+        float *ch = (float*) malloc(ldc * n * sizeof(float));
+        op.to_host(cd, ch, ldc * n * sizeof(float));
+
+        for (int i = 0; i < ldc * n; ++i) {
+            CHECK(abs(ch[i] - e2[i]) < 1e-3);
+        }
+        
+        // free asp, bsp
+        op.free(atd);
+        op.free_devicememory(bsd);
+        free(ch);
+        free_sparse(bsp);
+    }
+    free(cc);
+}
+
