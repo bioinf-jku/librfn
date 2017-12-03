@@ -481,7 +481,6 @@ void free_batch(void *ptr) {
 void free_batch(SparseMatrix* a) {
     // see get batch
     if (handle_valid(a)) {
-        free(a->rowPointers);
         std::free(a);
     }
 }
@@ -496,24 +495,18 @@ float* get_batch(const float* X, int ncol, int batch_num, int batch_size) {
 }
 
 SparseMatrix* get_batch(SparseMatrix* X, int ncol, int batch_num, int batch_size) {
-    // ncol can be ignored
-    // batch_size number of rows
-    int from = batch_num * batch_size;
-    int nrows = batch_size;
+    int fromIndex = 0;
+    int toIndex = 0;
+    CUDA_CALL(cudaMemcpy(&fromIndex, &X->rowPointers[batch_num * batch_size], sizeof(int), cudaMemcpyDeviceToHost));
+    CUDA_CALL(cudaMemcpy(&toIndex, &X->rowPointers[(batch_num + 1) * batch_size], sizeof(int), cudaMemcpyDeviceToHost));
 
     SparseMatrix* dest = (SparseMatrix*) std::malloc(sizeof(SparseMatrix));
-    int fromIndex = 0;
-    int toIndex   = 0;
-    CUDA_CALL(cudaMemcpy(&fromIndex, &X->rowPointers[from], sizeof(int), cudaMemcpyDeviceToHost));
-    CUDA_CALL(cudaMemcpy(&toIndex  , &X->rowPointers[from + nrows], sizeof(int), cudaMemcpyDeviceToHost));
+    dest->rowPointers = X->rowPointers + batch_num * batch_size;
+    dest->n = batch_size;
+    dest->nnz = toIndex - fromIndex;
+    dest->columns = X->columns + fromIndex;
+    dest->values = X->values + fromIndex;
 
-    dest->nnz = (toIndex - fromIndex);
-    dest->n = nrows;
-    dest->values = &X->values[fromIndex];
-    dest->columns = &X->columns[fromIndex];
-    dest->rowPointers = malloci((nrows + 1) * sizeof(int));
-    memcpy(dest->rowPointers, &X->rowPointers[from], (nrows + 1) * sizeof(int));
-    subtract_first_element(dest->rowPointers, nrows + 1);
     return dest;
 }
 
