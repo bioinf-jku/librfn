@@ -193,11 +193,9 @@ void free_batch(SparseMatrix a) {
 }
 
 void free_devicememory(void* ptr) const {
-    free(ptr);
 }
 
 void free_devicememory(SparseMatrix X) const {
-    free(X);
 }
 
 void free_malloc_matrix(void* ptr) {
