@@ -628,7 +628,6 @@ void GPU_Operations::printMatrixCM(const float* a, int n, int m, const char* fmt
 }
 
 void GPU_Operations::printMatrixSP(const SparseMatrix *a, const char* fmt) const {
-    const char* format = fmt == 0 ? "%1.3f " : fmt;
     size_t size_values = a->nnz * sizeof(float);
     size_t size_columns = a->nnz * sizeof(int);
     size_t size_pointers = (a->n + 1)* sizeof(int);
@@ -641,6 +640,7 @@ void GPU_Operations::printMatrixSP(const SparseMatrix *a, const char* fmt) const
     CUDA_CALL(cudaMemcpy(tmp_vals, a->values, size_values, cudaMemcpyDeviceToHost));
     CUDA_CALL(cudaMemcpy(tmp_cols, a->columns, size_columns, cudaMemcpyDeviceToHost));
 #if 0
+    const char* format = fmt == 0 ? "%1.3f " : fmt;
     printf("values: ");
     for (int i = 0; i < a->nnz; i++) {
         printf(format, tmp_vals[i]);
