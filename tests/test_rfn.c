@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
         W[i] = rand_unif() - 0.5;
     }
     for (int i = 0; i < m; ++i) {
-        P[i] = rand_unif() - 0.5;
+        P[i] = 0.1;
     }
     double* times_spent = (double*) malloc(repeat_test * sizeof(double));
     clock_t begin, end;
