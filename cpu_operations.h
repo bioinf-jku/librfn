@@ -205,11 +205,9 @@ void free_malloc_matrix(void* ptr) {
 void free_malloc_matrix(SparseMatrix m);
 
 void free_memcpy_matrix(void* ptr) {
-  // TODO
 }
 
 void free_memcpy_matrix(SparseMatrix m) {
-
 }
 
 template<typename T>

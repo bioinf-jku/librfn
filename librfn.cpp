@@ -89,8 +89,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
     float* C = op.malloc(m*sizeof(float)); // Note: this only stores the diagonal of C
 
     XType Xtmp = op.template init_invalid<XType>();
-    if (input_noise_rate > 0.0f)
-    {
+    if (input_noise_type && input_noise_rate > 0.0f) {
        Xtmp = op.template malloc_matrix<XType>(batch_size, m);
     }
 
