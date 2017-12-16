@@ -37,6 +37,7 @@ const int USE_CPU = -2;
  * @param gpu_id        ID of the GPU that this will run on
  *                      If this is -1 use the GPU with the most free memory
  *                      If this is -2, the CPU is used instead of the GPU
+ * @param verbose       True to print informational messages
  *
  * @return 0 on success, 1 otherwise. The trained network will be stored
  *         in the W_host and P_host variables.
@@ -48,7 +49,7 @@ int train_rfn(const float* X, float* W, float* P, const int n,
               const float l2_weightdecay, const float l1_weightdecay,
               const float momentum,
               const int noise_type, const int activation_type, const int apply_scaling,
-              const int applyNewtonUpdate, unsigned long seed, int gpu_id);
+              const int applyNewtonUpdate, unsigned long seed, int gpu_id, const bool verbose);
 
 
 /**
@@ -66,7 +67,7 @@ int train_rfn_sparse(const float* Xvals, const int* Xcols, const int *Xrowptr,
                      const float l2_weightdecay, const float l1_weightdecay,
                      const float momentum,
                      const int noise_type, const int activation_type, const int apply_scaling,
-                     const int applyNewtonUpdate, unsigned long seed, int gpu_id);
+                     const int applyNewtonUpdate, unsigned long seed, int gpu_id, const bool verbose);
 
 /**
  * Given a trained RFN, this will calculate the weights that are used to
