@@ -13,7 +13,7 @@ using namespace Rcpp;
 RcppExport SEXP R_train_rfn(SEXP Xs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP n_iters,
    SEXP batch_sizes, SEXP etaWs, SEXP etaPs, SEXP minPs, SEXP h_thresholds, SEXP dropout_rates,
    SEXP input_noise_rates, SEXP l2_weightdecays, SEXP l1_weightdecays, SEXP momentums,
-   SEXP noise_types, SEXP apply_relus, SEXP apply_scalings, SEXP apply_newton_updates, SEXP seeds, SEXP gpu_id)
+   SEXP noise_types, SEXP apply_relus, SEXP apply_scalings, SEXP apply_newton_updates, SEXP seeds, SEXP gpu_id, SEXP verbose)
 {
    BEGIN_RCPP
 
@@ -32,7 +32,7 @@ RcppExport SEXP R_train_rfn(SEXP Xs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks
       as<float>(etaPs), as<float>(minPs), as<float>(h_thresholds), as<float>(dropout_rates),
       as<float>(input_noise_rates), as<float>(l2_weightdecays), as<float>(l1_weightdecays),
       as<float>(momentums), as<int>(noise_types), as<int>(apply_relus), as<int>(apply_scalings),
-      as<int>(apply_newton_updates), as<int>(seeds), as<int>(gpu_id));
+      as<int>(apply_newton_updates), as<int>(seeds), as<int>(gpu_id), as<bool>(verbose));
    t = clock() - t;
 
    PutRNGstate();
@@ -54,7 +54,7 @@ RcppExport SEXP R_train_rfn(SEXP Xs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks
 RcppExport SEXP R_train_rfn_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP n_iters,
    SEXP batch_sizes, SEXP etaWs, SEXP etaPs, SEXP minPs, SEXP h_thresholds, SEXP dropout_rates,
    SEXP input_noise_rates, SEXP l2_weightdecays, SEXP l1_weightdecays, SEXP momentums,
-   SEXP noise_types, SEXP apply_relus, SEXP apply_scalings, SEXP apply_newton_updates, SEXP seeds, SEXP gpu_id)
+   SEXP noise_types, SEXP apply_relus, SEXP apply_scalings, SEXP apply_newton_updates, SEXP seeds, SEXP gpu_id, SEXP verbose)
 {
    BEGIN_RCPP
 
@@ -76,7 +76,7 @@ RcppExport SEXP R_train_rfn_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, SEX
       as<float>(etaPs), as<float>(minPs), as<float>(h_thresholds), as<float>(dropout_rates),
       as<float>(input_noise_rates), as<float>(l2_weightdecays), as<float>(l1_weightdecays),
       as<float>(momentums), as<int>(noise_types), as<int>(apply_relus), as<int>(apply_scalings),
-      as<int>(apply_newton_updates), as<int>(seeds), as<int>(gpu_id));
+      as<int>(apply_newton_updates), as<int>(seeds), as<int>(gpu_id), as<bool>(verbose));
    t = clock() - t;
 
    PutRNGstate();
