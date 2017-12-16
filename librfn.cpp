@@ -61,9 +61,9 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
           const float dropout_rate, const float input_noise_rate,
           const float l2_weightdecay, const float l1_weightdecay, const float momentum,
           const int input_noise_type, const int activation_type, const int apply_scaling,
-          const int applyNewtonUpdate, unsigned long seed, int gpu_id) {
-    if (batch_size == 1) {
-        printf ("batch_size == 1 not supported, switching to full batch mode");
+          const int applyNewtonUpdate, unsigned long seed, int gpu_id, bool verbose = true) {
+    if (verbose && batch_size == 1) {
+        printf("batch_size == 1 not supported, switching to full batch mode");
     }
 
     OP op(n, m, k, seed, gpu_id);
@@ -73,8 +73,9 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
     XType X = op.to_device(X_host, m*n*sizeof(float));
     float* W = op.to_device(W_host, k*m*sizeof(float));
     float* P = op.to_device(P_host, m*sizeof(float));
-    if (batch_size < 2) // no mini-batches, one batch=full dataset
+    if (batch_size < 2) { // no mini-batches, one batch=full dataset
         batch_size = n;
+    }
     int n_batches = n / batch_size;
     float* XCov_diag = op.malloc(m*sizeof(float));
 
@@ -138,7 +139,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
     }
 
     for (int cur_iter = 0; cur_iter < n_iter; ++cur_iter) {
-        if (cur_iter % 1 == 0) {
+        if (verbose && cur_iter % 1 == 0) {
             gettimeofday(&t1, 0);
             printf("epoch: %4d  (time: %6.2fs)\n", cur_iter, time_diff(&t1, &t0));
         }
