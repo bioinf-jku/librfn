@@ -49,7 +49,7 @@ int train_rfn(const float* X, float* W, float* P, const int n,
               const float l2_weightdecay, const float l1_weightdecay,
               const float momentum,
               const int noise_type, const int activation_type, const int apply_scaling,
-              const int applyNewtonUpdate, unsigned long seed, int gpu_id, const bool verbose);
+              const int applyNewtonUpdate, unsigned long seed, int gpu_id, const bool verbose = true);
 
 
 /**
@@ -67,7 +67,7 @@ int train_rfn_sparse(const float* Xvals, const int* Xcols, const int *Xrowptr,
                      const float l2_weightdecay, const float l1_weightdecay,
                      const float momentum,
                      const int noise_type, const int activation_type, const int apply_scaling,
-                     const int applyNewtonUpdate, unsigned long seed, int gpu_id, const bool verbose);
+                     const int applyNewtonUpdate, unsigned long seed, int gpu_id, const bool verbose = true);
 
 /**
  * Given a trained RFN, this will calculate the weights that are used to

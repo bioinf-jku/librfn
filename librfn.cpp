@@ -61,7 +61,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
           const float dropout_rate, const float input_noise_rate,
           const float l2_weightdecay, const float l1_weightdecay, const float momentum,
           const int input_noise_type, const int activation_type, const int apply_scaling,
-          const int applyNewtonUpdate, unsigned long seed, int gpu_id, bool verbose = true) {
+          const int applyNewtonUpdate, unsigned long seed, int gpu_id, bool verbose) {
     if (verbose && batch_size == 1) {
         printf("batch_size == 1 not supported, switching to full batch mode");
     }
@@ -356,27 +356,27 @@ int train_rfn(const float* X, float* W, float* P, const int n,
               const float l2_weightdecay, const float l1_weightdecay,
               const float momentum,
               const int input_noise_type, const int activation_type, const int apply_scaling,
-              const int applyNewtonUpdate, unsigned long seed, const int gpu_id) {
+              const int applyNewtonUpdate, unsigned long seed, const int gpu_id, const bool verbose) {
     if (gpu_id == USE_CPU) {
         if (k > m) {
             return train<CPU_Operations, true, float *, const float *>(X, W, P, n, m, k,
                         n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1, verbose);
         } else {
             return train<CPU_Operations, false, float *, const float *>(X, W, P, n, m, k,
                         n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1, verbose);
         }
     } else {
 #ifndef NOGPU
         if (k > m) {
             return train<GPU_Operations, true, float *, const float *>(X, W, P, n, m, k,
                         n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id, verbose);
         } else {
             return train<GPU_Operations, false, float *, const float *>(X, W, P, n, m, k,
                         n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id, verbose);
         }
 #else
         fprintf(stderr, "librfn was compiled without GPU support");
@@ -393,18 +393,18 @@ int train_rfn_sparse(const float* Xvals, const int* Xcols, const int *Xrowptr,
               const float l2_weightdecay, const float l1_weightdecay,
               const float momentum,
               const int input_noise_type, const int activation_type, const int apply_scaling,
-              const int applyNewtonUpdate, unsigned long seed, const int gpu_id) {
+              const int applyNewtonUpdate, unsigned long seed, const int gpu_id, const bool verbose) {
     if (gpu_id == USE_CPU) {
         const CPU_Operations::SparseMatrix X = CPU_Operations::create_sparse_matrix(Xvals, Xcols, Xrowptr, n, m);
         int retval = 0;
         if (k > m) {
             retval =  train<CPU_Operations, true, CPU_Operations::SparseMatrix, const CPU_Operations::SparseMatrix>((CPU_Operations::SparseMatrix) X, W, P, n, m, k,
                         n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1, verbose);
         } else {
             retval = train<CPU_Operations, false, CPU_Operations::SparseMatrix, const CPU_Operations::SparseMatrix>((CPU_Operations::SparseMatrix) X, W, P, n, m, k,
                         n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1);
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, -1, verbose);
         }
         CPU_Operations::free_sparse_matrix(X);
         return retval;
@@ -414,11 +414,11 @@ int train_rfn_sparse(const float* Xvals, const int* Xcols, const int *Xrowptr,
         if (k > m) {
             return train<GPU_Operations, true, GPU_Operations::SparseMatrix*, const GPU_Operations::SparseMatrix*>(&X, W, P, n, m, k,
                         n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id, verbose);
         } else {
             return train<GPU_Operations, false, GPU_Operations::SparseMatrix*, const GPU_Operations::SparseMatrix*>(&X, W, P, n, m, k,
                         n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
-                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+                        l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id, verbose);
         }
         GPU_Operations::free_sparse_matrix(X);
 #else
