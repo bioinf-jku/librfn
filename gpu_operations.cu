@@ -512,13 +512,14 @@ void GPU_Operations::dropout(SparseMatrix* X, const unsigned size, const float d
     assert(!cudaGetLastError());
 }
 
+// Gaussian and salt&pepper noise is only applied to nonzero entries to save the costly insertion/deletion operation
 void GPU_Operations::add_gauss_noise(SparseMatrix* X, const unsigned size, const float noise_rate) const {
-    gauss_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, noise_rate, rng_state);
+    gauss_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, X->nnz, noise_rate * X->nnz / size, rng_state);
     assert(!cudaGetLastError());
 }
 
 void GPU_Operations::add_saltpepper_noise(SparseMatrix* X, const unsigned size, const float noise_rate) const {
-    saltpepper_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, noise_rate, rng_state);
+    saltpepper_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, X->nnz, noise_rate * X->nnz / size, rng_state);
     assert(!cudaGetLastError());
 }
 
