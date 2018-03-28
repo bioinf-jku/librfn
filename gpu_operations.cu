@@ -330,7 +330,7 @@ GPU_Operations::~GPU_Operations() {
         CUDA_CALL(cudaStreamSynchronize(streams[i]));
         CUDA_CALL(cudaStreamDestroy(streams[i]));
     }
-    
+
     CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
     CUSPARSE_CALL(cusparseDestroy(cusparse_handle));
     CUDA_CALL(cudaFree(rng_state))
@@ -351,7 +351,7 @@ float* GPU_Operations::to_device(const float* src, size_t size) const {
     float* dst = 0;
 #ifdef MEM_DEBUG
     allocated_memory += size;
-#endif 
+#endif
     CUDA_CALL(cudaMalloc(&dst, size));
     CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice));
     return dst;
@@ -361,7 +361,7 @@ int* GPU_Operations::to_device(const int* src, size_t size) const {
     int* dst = 0;
 #ifdef MEM_DEBUG
     allocated_memory += size;
-#endif 
+#endif
     CUDA_CALL(cudaMalloc(&dst, size));
     CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice));
     return dst;
@@ -383,64 +383,64 @@ void GPU_Operations::fill(float* X, const unsigned size, const float value) cons
     int threads, blocks;
     get_grid_sizes(size, &threads, &blocks);
     fill_eltw<<<blocks, threads>>>(X, size, value);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::dropout(float* X, const unsigned size, const float dropout_rate) const {
     dropout_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X, size, dropout_rate, rng_state);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::add_gauss_noise(float* X, const unsigned size, const float noise_rate) const {
     gauss_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X, size, noise_rate, rng_state);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::add_saltpepper_noise(float* X, const unsigned size, const float noise_rate) const {
     saltpepper_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X, size, noise_rate, rng_state);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::invert(float* X, const unsigned size) const {
     int threads, blocks;
     get_grid_sizes(size, &threads, &blocks);
     invert_eltw<<<blocks, threads>>>(X, size);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::maximum(float* x, const float value, const unsigned size) const {
     int threads, blocks;
     get_grid_sizes(size, &threads, &blocks);
     maximum_eltw<<<blocks, threads>>>(x, value, size);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::leaky_relu(float* x, const float value, const unsigned size) const {
     int threads, blocks;
     get_grid_sizes(size, &threads, &blocks);
     leaky_relu_eltw<<<blocks, threads>>>(x, value, size);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::sigmoid(float* x, const unsigned size) const {
     int threads, blocks;
     get_grid_sizes(size, &threads, &blocks);
     sigmoid_eltw<<<blocks, threads>>>(x, size);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::tanh(float* x, const unsigned size) const {
     int threads, blocks;
     get_grid_sizes(size, &threads, &blocks);
     tanh_eltw<<<blocks, threads>>>(x, size);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::soft_threshold(float* x, const float alpha, const int size) const {
     int threads, blocks;
     get_grid_sizes(size, &threads, &blocks);
     softthreshold_eltw<<<blocks, threads>>>(x, alpha, size);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::fill_eye(float* X, unsigned n) const {
@@ -459,6 +459,7 @@ void GPU_Operations::invsqrt(float* s, const unsigned n) const {
     int t, b;
     get_grid_sizes(n, &t, &b);
     invsqrt_eltw<<<t, b>>>(s, n);
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::scale_columns(float* X, const unsigned nrows, const unsigned ncols, float* s) const {
@@ -466,18 +467,21 @@ void GPU_Operations::scale_columns(float* X, const unsigned nrows, const unsigne
     int threads, blocks;
     get_grid_sizes(ncols * nrows, &threads, &blocks);
     scale_columns_kernel<<<threads, blocks>>>(X, s, nrows, ncols);
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::scale_rows(float* X, const unsigned nrows, const unsigned ncols, float* s) const {
     int threads, blocks;
     get_grid_sizes(ncols * nrows, &threads, &blocks);
     scale_rows_kernel<<<threads, blocks>>>(X, s, nrows, ncols);
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::subtract_first_element(int* a, unsigned len) const {
     int threads, blocks;
     get_grid_sizes(len, &threads, &blocks);
     subtract_first_kernel<<<threads, blocks>>>(a, len);
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::calculate_column_variance(const SparseMatrix* X, const unsigned nrows, const unsigned ncols,
@@ -486,6 +490,7 @@ void GPU_Operations::calculate_column_variance(const SparseMatrix* X, const unsi
     SparseMatrix* x_transpose = transpose(X, ncols);
     get_grid_sizes(nrows, &threads, &blocks);
     sparse_row_variance_kernel<<<threads, blocks>>>(*x_transpose, variance, ncols, nrows, eps);
+    CUDA_CALL(cudaGetLastError());
     free(x_transpose->columns);
     free(x_transpose->values);
     free(x_transpose->rowPointers);
@@ -498,29 +503,31 @@ void GPU_Operations::scale_columns(SparseMatrix* X, const unsigned nrows, const 
     int threads, blocks;
     get_grid_sizes(X->nnz, &threads, &blocks);
     sparse_scale_columns_kernel<<<threads, blocks>>>(*X, s, nrows, ncols);
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::scale_rows(SparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
     int threads, blocks;
     get_grid_sizes(X->n, &threads, &blocks);
     sparse_scale_rows_kernel<<<threads, blocks>>>(*X, s);
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::dropout(SparseMatrix* X, const unsigned size, const float dropout_rate) const {
     // Assuming that the random dropout rate would also hit the zero entries at the same rate.
     dropout_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, X->nnz, dropout_rate * X->nnz / size, rng_state);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 // Gaussian and salt&pepper noise is only applied to nonzero entries to save the costly insertion/deletion operation
 void GPU_Operations::add_gauss_noise(SparseMatrix* X, const unsigned size, const float noise_rate) const {
     gauss_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, X->nnz, noise_rate * X->nnz / size, rng_state);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::add_saltpepper_noise(SparseMatrix* X, const unsigned size, const float noise_rate) const {
     saltpepper_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, X->nnz, noise_rate * X->nnz / size, rng_state);
-    assert(!cudaGetLastError());
+    CUDA_CALL(cudaGetLastError());
 }
 
 void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
