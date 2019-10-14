@@ -345,7 +345,7 @@ class TSp_mat : public Sp_mat
           for ( typename vector< pair<T,int> >::const_iterator p = r.begin();
             p < r.end(); p++)
           {
-            sum += conj(p->first) * x[p->second];
+            sum += (p->first) * x[p->second];
           }
         }
         else /* incx != 1 */
@@ -354,7 +354,7 @@ class TSp_mat : public Sp_mat
             p < r.end(); p++)
            {
             //sum = sum + p->first * x[p->second * incx];
-            sum += conj(p->first) * x[p->second * incx];
+            sum += (p->first) * x[p->second * incx];
             }
         }
 
@@ -387,14 +387,14 @@ class TSp_mat : public Sp_mat
     {
       for (typename vector< pair<T,int> >::const_iterator p = r.begin();
           p < r.end(); p++)
-       y[p->second] += alpha * conj(p->first);
+       y[p->second] += alpha * p->first;
 
     }
     else /* incy != 1 */
     {
     for (typename vector< pair<T,int> >::const_iterator p = r.begin();
         p < r.end(); p++)
-      y[incy * p->second] += alpha * conj(p->first);
+      y[incy * p->second] += alpha * p->first;
     }
   }
 
@@ -418,7 +418,7 @@ class TSp_mat : public Sp_mat
     typename vector<T>::const_iterator d= diag.begin();
     for ( ; d < diag.end(); X+=incx, d++, Y+=incy)
     {
-      *Y += alpha * conj(*d) * *X;
+      *Y += alpha * (*d) * *X;
     }
   }
 
@@ -624,7 +624,7 @@ class TSp_mat : public Sp_mat
 
       for (int j=N-1, jj=(N-1)*incx; 0<=j; j--, jj -= incx)
       {
-        x[jj] /= conj(diag[j]) ;
+        x[jj] /= (diag[j]) ;
         sp_conj_axpy( -x[jj], S[j], x, incx);
       }
       if (alpha != (T) 1.0)
@@ -638,7 +638,7 @@ class TSp_mat : public Sp_mat
 
       for (int j=0, jj=0; j<N; j++, jj += incx)
       {
-        x[jj] /= conj(diag[j]);
+        x[jj] /= (diag[j]);
         sp_conj_axpy(- x[jj], S[j], x, incx);
       }
       if (alpha != (T) 1.0)
@@ -1581,7 +1581,7 @@ void BLAS_xusdot( enum blas_conj_type conj_flag, int nz,
   }
   else
     for (int i=0; i<nz; i++)
-      t += conj(x[i]) * y[index[i]*incy];
+      t += (x[i]) * y[index[i]*incy];
 
 
   *r = t;
